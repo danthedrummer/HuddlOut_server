@@ -10,6 +10,9 @@ var database = mysql.createConnection({
     user     : 'root',
     database : 'huddlout'
 }); //My SQL database connection
+var nJwt = require("njwt"); //Javascript token generator
+var uuid = require('node-uuid'); //UUID generator for client/server authorization
+var secretKey = uuid.v4();
 var server; //The server
 
 
@@ -18,11 +21,37 @@ var server; //The server
 */
 
 //Test call, returns time
-app.get("/getTime", function (req, res) {
+app.get("/api/test/getTime", function (req, res) {
    var d = new Date();
    res.end(d.toString());
-})
+});
 
+//Test call, returns a fake token
+app.get("/api/test/getAuthKey", function (req, res) {
+   var claims = {
+      sub: 'test_user',
+      iss: 'huddlout_auth_signature'
+   }
+   var jwt = nJwt.create(claims,secretKey);
+   var token = jwt.compact();
+   res.json(token);
+});
+
+//Test call, checks for auth key
+app.get("/api/test/checkAuthKey", function(req, res) {
+   console.log("POST!");
+   var input = req.param("token");
+   console.log(input);
+   if(typeof input !== undefined)
+   {
+      console.log(nJwt.verify(input, secretKey));
+      console.log("SUCCESS!");
+      res.end("SUCCESS!");
+      return;
+   }
+   console.log("FAILED!");
+   res.end("FAILED!");
+});
 
 /*
  * Server Starts here
