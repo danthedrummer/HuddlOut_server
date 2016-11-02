@@ -5,7 +5,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 ## API Documentation
 ### Authentication
-####Check user authentication**
+####Check user authentication
 
 **GET:** *api/auth/checkAuth*
 
