@@ -13,8 +13,9 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/auth/checkAuth?authKey=12345*
 
-**RETURNS:** *int result (0 = success, 1 = requires password login, 2 = requires full login)*
+**RETURNS:** *int result (0 = invalid token, 1 = requires login, token = successful)*
 
-**Login**
-
-**Register**
+##Login
+TODO
+##Register
+TODO
