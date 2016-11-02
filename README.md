@@ -5,14 +5,15 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 ## API Documentation
 ### Authentication
-**Check user authentication**
-GET: *api/auth/checkAuth*
+####Check user authentication**
 
-PARAMS: *authKey*
+**GET:** *api/auth/checkAuth*
 
-EXAMPLE: *api/auth/checkAuth?authKey=12345*
+**PARAMS:** *authKey*
 
-RETURNS:    * *int result (0 = success, 1 = requires password login, 2 = requires full login)* 1
+**EXAMPLE:** *api/auth/checkAuth?authKey=12345*
+
+**RETURNS:** *int result (0 = success, 1 = requires password login, 2 = requires full login)*
 
 **Login**
 
