@@ -5,7 +5,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 ## API Documentation
 ### Authentication
-####Check user authentication
+#### Check user authentication
 
 **GET:** *api/auth/checkAuth*
 
@@ -15,6 +15,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid token" = malformed data or token doesn't exist, "renew token" = relog is required to renew the token since it's expired or password has changed, token = token authorised*
 
+#### Login user
 
 **GET:** *api/auth/login*
 
@@ -24,5 +25,6 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" = params are invalid, "invalid username" = username is invalid, "invalid password" = password is invalid, token = token authorised*
 
+#### Register user
 
 **GET:** *api/auth/register (NOT YET IMPLEMENTED)*
