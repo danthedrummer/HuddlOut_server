@@ -12,7 +12,7 @@ var database = mysql.createConnection({
 }); //My SQL database connection
 var nJwt = require("njwt"); //Javascript token generator
 var uuid = require('node-uuid'); //UUID generator for client/server authorization
-var secretKey = uuid.v4();
+var secretKey = uuid.v4(); //Key used to create tokens, overwritten if already exists in DB
 var server; //The server
 
 
@@ -28,8 +28,9 @@ app.get("/api/test/getTime", function (req, res) {
 
 //Test call, returns a fake token
 app.get("/api/test/getAuthKey", function (req, res) {
+   console.log(res.query);
    var claims = {
-      sub: 'test_user',
+      sub: res.query,
       iss: 'huddlout_auth_signature'
    }
    var jwt = nJwt.create(claims,secretKey);
@@ -54,7 +55,7 @@ app.get("/api/test/checkAuthKey", function(req, res) {
 });
 
 /*
- * Server Starts here
+ * Server Initialisation Starts here
 */
 
 //Connect to the database and then the server
@@ -68,11 +69,42 @@ database.connect(function(err){
    {
       console.log("Connected to database");
       
-      //Start Server
-      server = app.listen(8081, function () {
-         var host = server.address().address;
-         var port = server.address().port;
-         console.log("HuddlOut server is now listening at http://%s:%s", host, port);
+      //Create server key if it does not exist
+      database.query('SELECT * FROM server_information WHERE var_key="secret_key";', function (err, rows, fields){
+         if(err) { 
+            console.log("Database query error: " + err);
+            console.log("Stopping server");
+            process.exit(0);
+         };
+         
+         if(rows.length == 0) {
+            //Key does not exist in DB
+            console.log("Server secret key does not exist. Adding to database.");
+            database.query('INSERT INTO server_information (var_key, var_value) VALUES ("secret_key", "' + secretKey + '");', function (err, rows, fields){
+               if(err) { 
+                  console.log("Database query error: " + err);
+                  console.log("Stopping server");
+                  process.exit(0);
+               };
+               
+               console.log("Secret Key added to database");
+               startServer();
+            });
+         }
+         else {
+            //Key exists in DB
+            secretKey = rows[0].var_value;
+            startServer();
+         }
       });
    }
 });
+
+//Start Server
+function startServer() {
+   server = app.listen(8081, function () {
+      var host = server.address().address;
+      var port = server.address().port;
+      console.log("HuddlOut server is now listening at port " + port);
+   });
+}
