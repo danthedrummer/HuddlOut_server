@@ -25,98 +25,103 @@ var server; //The server
 */
 
 //Check if user token is valid
-//Params: ?token
-//Returns 0 if invalid
-//Returns 1 if relog is required
-//Returns token if successful
 app.get("/api/auth/checkAuth", function(req, res) {
-   var token = req.param("token");
+   //Params: ?token
+   //Returns "invalid token" if invalid (.e.g malformed data or token doesn't exist)
+   //Returns "renew token" if relog is required to renew the token since it's expired or password has changed
+   //Returns token if successful
    
-   if(typeof token == undefined) {
-      res.end("0");
+   var token = req.query.token;
+   
+   console.log("Checking Token: " + token);
+   
+   //Checks that the paramaters exist
+   if(token === undefined) {
+      res.end("invalid token");
    }
    
-   database.query("SELECT * FROM tokens WHERE token='" + token + "';", function (err, rows, fields){
+   nJwt.verify(token, secretKey, function(err, verifiedJwt) {
+      if(err) {
+         if(err.message == "Jwt is expired")
+            res.end("renew token")
+         else
+            res.end("invalid token");
+         
+         return;
+      } else {
+         database.query("SELECT * FROM users WHERE id='" + verifiedJwt.body.sub + "';", function (err, rows, fields){
+            dbQueryCheck(err);
+            
+            if(rows.length == 0) {
+               //If token is invalid
+               res.end("invalid token");
+               return;
+            }
+            
+            if(verifiedJwt.body.pass != rows[0].password) {
+               //If user's pw has changed
+               res.end("renew token");
+               return;
+            }
+            
+            //If token is valid
+            res.end(token.toString());
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to login
+app.get("/api/auth/login", function(req, res) {
+   //Params: ?username, ?password
+   //Returns "invalid params" if invalid params
+   //Returns "invalid username" if invalid username
+   //Returns "invalid password" if invalid password
+   //Returns token if login successful
+   
+   var username = req.query.username;
+   var password = req.query.password;
+   
+   if(username === undefined || password === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
       dbQueryCheck(err);
       
-      if(rows.length == 0 || token != rows[0].token) {
-         //If token is invalid
-         console.log("row length: " + rows.length);
-         res.end("0");
+      if(rows.length == 0 || username != rows[0].username) {
+         //If username is invalid
+         res.end("invalid username");
          return;
       }
       
-      //Get expirationTimestamp
-      var expirationTimestamp = new Date(rows[0].expiration.toString().replace(' ', 'T')).getTime();
-      
-      if(expirationTimestamp < Date.now()) {
-         //If token is out of date
-         res.end("1");
+      if(password != rows[0].password) {
+         res.end("invalid password");
          return;
       }
       
-      //If token is valid
+      var claims = {
+         sub: rows[0].id,
+         pass: rows[0].password,
+      }
+      var jwt = nJwt.create(claims, secretKey);
+      jwt.setExpiration(new Date().getTime() + (24*60*60*1000)); //1 day expiration
+      var token = jwt.compact();
       res.end(token);
       return;
    });
 });
 
-//User attempts to login
-//Params: ?username, ?password
-//Returns -1 if datatype validation fails
-//Returns 0 if invalid username
-//Returns 1 if invalid password
-//Returns token if login successful
-app.get("/api/auth/login", function(req, res) {
-   //TODO: add login functions
-});
-
 //User attempts to register
-//Params: ?username, ?password
-//Returns -1 if datatype validation fails
-//Returns 0 if username already taken
-//Returns token if registration successful
 app.get("/api/auth/register"), function(req, res) {
-   //TODO: add register functions
+   //Params: ?username, ?password
+   //Returns "occupied username" if username already taken
+   //Returns "invalid username" if invalid username
+   //Returns "invalid password" if password is invalid
+   //Returns token if registration successful
 }
-
-/*
- * TEST
-*/
-
-//Test call, returns time
-app.get("/api/test/getTime", function (req, res) {
-   var d = new Date();
-   res.end(d.toString());
-});
-
-//Test call, returns a fake token
-app.get("/api/test/getAuthKey", function (req, res) {
-   console.log(res.query);
-   var claims = {
-      sub: res.query,
-      iss: 'huddlout_auth_signature'
-   }
-   var jwt = nJwt.create(claims,secretKey);
-   var token = jwt.compact();
-   res.json(token);
-});
-
-//Test call, checks for auth key
-app.get("/api/test/checkAuthKey", function(req, res) {
-   console.log("POST!");
-   var input = req.param("token");
-   console.log(input);
-   if(typeof input !== undefined)
-   {
-      console.log(nJwt.verify(input, secretKey));
-      console.log("SUCCESS!");
-      res.end("SUCCESS!");
-      return;
-   }
-   console.log("FAILED!");
-   res.end("FAILED!");
-});
 
 /*
  * Server Initialisation Code
