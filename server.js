@@ -4,6 +4,8 @@ var app = express(); //Express app
 var fs = require("fs"); //File system for I/O
 var bcrypt = require("bcryptjs"); //BCrypt hashing & salting algorithm
 var sanitizer = require("sanitizer"); //Sanitizer for input
+var sqlinjection = require("sql-injection"); //SQL injection prevention
+app.use(sqlinjection);
 var mysql = require("mysql"); //MySQL connection dependencies
 var database = mysql.createConnection({
     host     : 'localhost',
@@ -33,8 +35,6 @@ app.get("/api/auth/checkAuth", function(req, res) {
    
    var token = req.query.token;
    
-   console.log("Checking Token: " + token);
-   
    //Checks that the paramaters exist
    if(token === undefined) {
       res.end("invalid token");
@@ -43,7 +43,7 @@ app.get("/api/auth/checkAuth", function(req, res) {
    nJwt.verify(token, secretKey, function(err, verifiedJwt) {
       if(err) {
          if(err.message == "Jwt is expired")
-            res.end("renew token")
+            res.end("renew token");
          else
             res.end("invalid token");
          
@@ -65,7 +65,7 @@ app.get("/api/auth/checkAuth", function(req, res) {
             }
             
             //If token is valid
-            res.end(token.toString());
+            res.end(token);
             return;
          });
       }
@@ -88,6 +88,9 @@ app.get("/api/auth/login", function(req, res) {
       return;
    }
    
+   username = sanitizer.sanitize(username);
+   password = sanitizer.sanitize(password);
+   
    database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
       dbQueryCheck(err);
       
@@ -106,8 +109,9 @@ app.get("/api/auth/login", function(req, res) {
          sub: rows[0].id,
          pass: rows[0].password,
       }
+      
       var jwt = nJwt.create(claims, secretKey);
-      jwt.setExpiration(new Date().getTime() + (24*60*60*1000)); //1 day expiration
+      jwt.setExpiration(new Date().getTime() + (60*60*1000)); //1 hour expiration
       var token = jwt.compact();
       res.end(token);
       return;
@@ -115,13 +119,13 @@ app.get("/api/auth/login", function(req, res) {
 });
 
 //User attempts to register
-app.get("/api/auth/register"), function(req, res) {
+app.get("/api/auth/register", function(req, res) {
    //Params: ?username, ?password
    //Returns "occupied username" if username already taken
    //Returns "invalid username" if invalid username
    //Returns "invalid password" if password is invalid
    //Returns token if registration successful
-}
+});
 
 /*
  * Server Initialisation Code
