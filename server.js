@@ -5,7 +5,7 @@ var fs = require("fs"); //File system for I/O
 var bcrypt = require("bcryptjs"); //BCrypt hashing & salting algorithm
 var sanitizer = require("sanitizer"); //Sanitizer for input
 var sqlinjection = require("sql-injection"); //SQL injection prevention
-app.use(sqlinjection);
+app.use(sqlinjection); //Apply SQL injection prevention to the express server
 var mysql = require("mysql"); //MySQL connection dependencies
 var database = mysql.createConnection({
     host     : 'localhost',
@@ -40,6 +40,7 @@ app.get("/api/auth/checkAuth", function(req, res) {
       res.end("invalid token");
    }
    
+   //Verify the token
    nJwt.verify(token, secretKey, function(err, verifiedJwt) {
       if(err) {
          if(err.message == "Jwt is expired")
@@ -49,22 +50,25 @@ app.get("/api/auth/checkAuth", function(req, res) {
          
          return;
       } else {
+         //If token data is valid, check if the user exists
          database.query("SELECT * FROM users WHERE id='" + verifiedJwt.body.sub + "';", function (err, rows, fields){
             dbQueryCheck(err);
             
+            //If the user does not exist, it is not valid
             if(rows.length == 0) {
                //If token is invalid
                res.end("invalid token");
                return;
             }
             
+            //If the user's password has changed, request token renewal
             if(verifiedJwt.body.pass != rows[0].password) {
                //If user's pw has changed
                res.end("renew token");
                return;
             }
             
-            //If token is valid
+            //Token is valid, return the token
             res.end(token);
             return;
          });
@@ -83,28 +87,34 @@ app.get("/api/auth/login", function(req, res) {
    var username = req.query.username;
    var password = req.query.password;
    
+   //Check if params are valid
    if(username === undefined || password === undefined) {
       res.end("invalid params");
       return;
    }
    
+   //Sanitize input
    username = sanitizer.sanitize(username);
    password = sanitizer.sanitize(password);
    
+   //Check if username exists
    database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
       dbQueryCheck(err);
       
+      //Check if the username is valid
       if(rows.length == 0 || username != rows[0].username) {
-         //If username is invalid
          res.end("invalid username");
          return;
       }
       
-      if(password != rows[0].password) {
+      //Check if the password is valid
+      if(!bcrypt.compareSync(password, rows[0].password)) {
+         //If password is invalid
          res.end("invalid password");
          return;
       }
       
+      //If username and password is valid, create a token and return it
       var claims = {
          sub: rows[0].id,
          pass: rows[0].password,
@@ -121,10 +131,52 @@ app.get("/api/auth/login", function(req, res) {
 //User attempts to register
 app.get("/api/auth/register", function(req, res) {
    //Params: ?username, ?password
+   //Returns "invalid params" if invalid params
    //Returns "occupied username" if username already taken
    //Returns "invalid username" if invalid username
    //Returns "invalid password" if password is invalid
-   //Returns token if registration successful
+   //Returns "success" if registration successful
+   
+   var username = req.query.username;
+   var password = req.query.password;
+   
+   //Check if params are valid
+   if(username === undefined || password === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Validate username & password
+   if(username.length < 7 || username.length > 20) {
+      res.end("invalid username");
+   }
+   
+   if(password.length < 7 || password.length > 50) {
+      res.end("invalid password");
+   }
+   
+   //Sanitize data
+   username = sanitizer.sanitize(username);
+   password = sanitizer.sanitize(password);
+   
+   //Hash & Salt password
+   password = bcrypt.hashSync(password, 8);
+   
+   //Check if username already exists, else register the user
+   database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
+      dbQueryCheck(err);
+      
+      if(rows.length > 0) {
+         res.end("occupied username");
+         return;
+      } else {
+         database.query("INSERT INTO users (username, password) VALUES ('" + username + "','" + password + "');", function(err, rows, fields) {
+            dbQueryCheck(err);
+            res.end("success");
+            return;
+         });
+      }
+   });
 });
 
 /*
@@ -170,11 +222,11 @@ function initServer() {
    }
 }
 
-//Check for database errors
+//Check for database errors. Shutdown server under event of errors.
 function dbQueryCheck(err) {
    if(err) { 
       console.log("Database query error: " + err);
-      console.log("Stopping server");
+      console.log("\n!!<< FATAL ERROR: STOPPING THE SERVER >>!!");
       process.exit(0);
    };
 }

@@ -21,10 +21,18 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *username, password*
 
-**EXAMPLE:** *api/auth/checkAuth?username=john+doe&password=hashed_pw*
+**EXAMPLE:** *api/auth/checkAuth?username=john%20doe&password=plain_pw*
 
 **RETURNS:** *"invalid params" = params are invalid, "invalid username" = username is invalid, "invalid password" = password is invalid, token = token authorised*
 
 #### Register user
 
-**GET:** *api/auth/register (NOT YET IMPLEMENTED)*
+**GET:** *api/auth/register*
+
+**PARAMS:** *username, password*
+
+**EXAMPLE:** *api/auth/register?username=john%20doe&password=plain_pw*
+
+**RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, "success" if registration successful*
+
+**NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters.*
