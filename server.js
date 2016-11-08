@@ -26,6 +26,60 @@ var server; //The server
  * AUTH
 */
 
+//Checks the token and returns it's state
+function checkAuth(token, callback) {
+   
+   //Checks that the paramaters exist
+   if(token === undefined) {
+      callback("invalid token");
+      return;
+   }
+   
+   //Verify the token
+   nJwt.verify(token, secretKey, function(err, verifiedJwt) {
+      if(err) {
+         if(err.message == "Jwt is expired") {
+            callback("renew token");
+            return;
+         }
+         else {
+            callback("invalid token");
+            return;
+         }
+      } else {
+         //If token data is valid, check if the user exists
+         database.query("SELECT * FROM users WHERE id='" + verifiedJwt.body.sub + "';", function (err, rows, fields){
+            dbQueryCheck(err);
+            
+            //If the user does not exist, it is not valid
+            if(rows.length == 0) {
+               //If token is invalid
+               callback("invalid token");
+               return;
+            }
+            
+            //If the user's password has changed, request token renewal
+            if(verifiedJwt.body.pass != rows[0].password) {
+               //If user's pw has changed
+               callback("renew token");
+               return;
+            }
+            
+            //Token is valid, return the token
+            callback(token);
+            return;
+         });
+      }
+   });
+}
+
+//Checks if the token is valid
+function isAuthValid(token, callback) {
+   checkAuth(token, function(response) {
+      callback(response == token);
+   });
+}
+
 //Check if user token is valid
 app.get("/api/auth/checkAuth", function(req, res) {
    //Params: ?token
@@ -35,44 +89,8 @@ app.get("/api/auth/checkAuth", function(req, res) {
    
    var token = req.query.token;
    
-   //Checks that the paramaters exist
-   if(token === undefined) {
-      res.end("invalid token");
-   }
-   
-   //Verify the token
-   nJwt.verify(token, secretKey, function(err, verifiedJwt) {
-      if(err) {
-         if(err.message == "Jwt is expired")
-            res.end("renew token");
-         else
-            res.end("invalid token");
-         
-         return;
-      } else {
-         //If token data is valid, check if the user exists
-         database.query("SELECT * FROM users WHERE id='" + verifiedJwt.body.sub + "';", function (err, rows, fields){
-            dbQueryCheck(err);
-            
-            //If the user does not exist, it is not valid
-            if(rows.length == 0) {
-               //If token is invalid
-               res.end("invalid token");
-               return;
-            }
-            
-            //If the user's password has changed, request token renewal
-            if(verifiedJwt.body.pass != rows[0].password) {
-               //If user's pw has changed
-               res.end("renew token");
-               return;
-            }
-            
-            //Token is valid, return the token
-            res.end(token);
-            return;
-         });
-      }
+   checkAuth(token, function(response){
+      res.end(response);
    });
 });
 
@@ -149,10 +167,12 @@ app.get("/api/auth/register", function(req, res) {
    //Validate username & password
    if(username.length < 7 || username.length > 20) {
       res.end("invalid username");
+      return;
    }
    
    if(password.length < 7 || password.length > 50) {
       res.end("invalid password");
+      return;
    }
    
    //Sanitize data
@@ -175,6 +195,29 @@ app.get("/api/auth/register", function(req, res) {
             res.end("success");
             return;
          });
+      }
+   });
+});
+
+//User does a thing
+app.get("/api/test/doSomething", function(req, res) {
+   
+   var token = req.query.token;
+   var print = req.query.print;
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         if(print === undefined) {
+         res.end("undefined string");
+         return;
+      }
+      res.end("returned string: " + print);
+      return;
+      } else {
+         checkAuth(token, function(response) {
+         res.end(response);
+         return;
+      });
       }
    });
 });
