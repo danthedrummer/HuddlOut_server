@@ -36,3 +36,13 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, "success" if registration successful*
 
 **NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters.*
+
+#### Change password
+
+**GET:** *api/auth/changePassword*
+
+**PARAMS:** *token, oldPassword, newPassword*
+
+**EXAMPLE:** *api/auth/register?token=token123&oldPassword=oldPw&newPassword=newPw*
+
+**RETURNS:** *"invalid params" if invalid params, "invalid id" if token sub is invalid, "invalid password" if password is invalid, token if update successful*

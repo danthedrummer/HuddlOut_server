@@ -80,6 +80,17 @@ function isAuthValid(token, callback) {
    });
 }
 
+//Returns the sub claim from a token
+function getTokenSub(token, callback) {
+   nJwt.verify(token, secretKey, function(err, verifiedJwt) {
+      if(err) {
+         callback("error");
+      } else {
+         callback(verifiedJwt.body.sub);
+      }
+   });
+}
+
 //Check if user token is valid
 app.get("/api/auth/checkAuth", function(req, res) {
    //Params: ?token
@@ -147,6 +158,8 @@ app.get("/api/auth/login", function(req, res) {
 });
 
 //User attempts to register
+// https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=paulwins&password=abcdefg
+// https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=glennncullen&password=1234567
 app.get("/api/auth/register", function(req, res) {
    //Params: ?username, ?password
    //Returns "invalid params" if invalid params
@@ -199,6 +212,68 @@ app.get("/api/auth/register", function(req, res) {
    });
 });
 
+//User attempts to change their password
+app.get("/api/auth/changePassword", function(req, res) {
+   //Params: ?token, ?oldPassword, ?newPassword
+   //Returns "invalid params" if invalid params
+   //Returns "invalid id" if token sub is invalid
+   //Returns "invalid password" if invalid old password
+   //Returns token if update successful
+   
+   var token = req.query.token;
+   var oldPassword = req.query.oldPassword;
+   var newPassword = req.query.newPassword;
+   
+   //Check if params are valid
+   if(token === undefined || oldPassword === undefined || newPassword === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize data
+   oldPassword = sanitizer.sanitize(oldPassword);
+   newPassword = sanitizer.sanitize(newPassword);
+   
+   //Validate the auth token
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         //Returns the token sub
+         getTokenSub(token, function(sub){
+            //Searched database for user with sub/id match
+            database.query("SELECT * FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+               dbQueryCheck(err);
+               
+               //Check if the id is valid
+               if(rows.length == 0 || sub != rows[0].id) {
+                  res.end("invalid id");
+                  return;
+               }
+               
+               //Check if the password is valid
+               if(!bcrypt.compareSync(oldPassword, rows[0].password)) {
+                  //If password is invalid
+                  res.end("invalid password");
+                  return;
+               }
+               
+               newPassword = bcrypt.hashSync(newPassword, 8);
+               
+               database.query("UPDATE users SET password='" + newPassword + "' WHERE id='" + sub + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  res.end(token);
+                  return;
+               });
+            });
+         });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
 //User does a thing
 app.get("/api/test/doSomething", function(req, res) {
    
@@ -208,16 +283,16 @@ app.get("/api/test/doSomething", function(req, res) {
    isAuthValid(token, function(isValid){
       if(isValid) {
          if(print === undefined) {
-         res.end("undefined string");
+            res.end("undefined string");
+            return;
+         }
+         res.end("returned string: " + print);
          return;
-      }
-      res.end("returned string: " + print);
-      return;
       } else {
          checkAuth(token, function(response) {
-         res.end(response);
-         return;
-      });
+            res.end(response);
+            return;
+         });
       }
    });
 });
