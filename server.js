@@ -170,7 +170,7 @@ app.get("/api/auth/register", function(req, res) {
    //Returns "occupied username" if username already taken
    //Returns "invalid username" if invalid username
    //Returns "invalid password" if password is invalid
-   //Returns "success" if registration successful
+   //Returns token if registration successful
    
    var username = req.query.username;
    var password = req.query.password;
@@ -209,8 +209,23 @@ app.get("/api/auth/register", function(req, res) {
       } else {
          database.query("INSERT INTO users (username, password) VALUES ('" + username + "','" + password + "');", function(err, rows, fields) {
             dbQueryCheck(err);
-            res.end("success");
-            return;
+            
+            //Login
+            database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
+               dbQueryCheck(err);
+
+               //Create a token and return it
+               var claims = {
+                  sub: rows[0].id,
+                  pass: rows[0].password,
+               }
+               
+               var jwt = nJwt.create(claims, secretKey);
+               jwt.setExpiration(new Date().getTime() + (60*60*1000)); //1 hour expiration
+               var token = jwt.compact();
+               res.end(token);
+               return;
+            });
          });
       }
    });
@@ -282,7 +297,7 @@ app.get("/api/auth/changePassword", function(req, res) {
  * GROUP
 */
 
-//User attempts to create a new group
+//User attempts to create a new group (In progress)
 app.get("/api/group/create", function(req, res) {
    //Params: ?token, ?name, ?activity (optional)
    //Returns "invalid params" if invalid params
@@ -322,7 +337,7 @@ app.get("/api/group/create", function(req, res) {
    });
 });
 
-//User attempts to delete a group
+//User attempts to delete a group (In progress)
 app.get("/api/group/delete", function(req, res) {
    //Params: ?token, ?groupId
    //Returns "invalid params" if invalid params
@@ -361,7 +376,7 @@ app.get("/api/group/delete", function(req, res) {
    });
 });
 
-//User attempts to view group members
+//User attempts to view group members (In progress)
 app.get("/api/group/getMembers", function(req, res) {
    
    var token = req.query.token;
@@ -384,6 +399,84 @@ app.get("/api/group/getMembers", function(req, res) {
             res.end(JSON.stringify(rows));
             return;
          });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to invite a member to the group (In progress)
+app.get("/api/group/inviteMember", function(req, res) {
+   //Params: ?token, ?groupId
+   //Returns "invalid params" if invalid params
+   //Returns "success" if registration successful
+   
+   var token = req.query.token;
+   var groupId = req.query.groupId;
+   
+   //Check if params are valid
+   if(token === undefined || groupId === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize group ID
+   groupId = sanitizer.sanitize(groupId);
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Delete group by ID
+         database.query("DELETE FROM groups WHERE ID='" + groupId + "';", function(err, rows, fields) {
+            dbQueryCheck(err);
+            
+            res.end("success");
+         });
+         
+         return;
+         
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to kick a member from the group (In progress)
+app.get("/api/group/kickMember", function(req, res) {
+   //Params: ?token, ?groupId
+   //Returns "invalid params" if invalid params
+   //Returns "success" if registration successful
+   
+   var token = req.query.token;
+   var groupId = req.query.groupId;
+   
+   //Check if params are valid
+   if(token === undefined || groupId === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize group ID
+   groupId = sanitizer.sanitize(groupId);
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Delete group by ID
+         database.query("DELETE FROM groups WHERE ID='" + groupId + "';", function(err, rows, fields) {
+            dbQueryCheck(err);
+            
+            res.end("success");
+         });
+         
+         return;
+         
       } else {
          checkAuth(token, function(response) {
             res.end(response);
