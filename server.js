@@ -207,24 +207,41 @@ app.get("/api/auth/register", function(req, res) {
          res.end("occupied username");
          return;
       } else {
-         database.query("INSERT INTO users (username, password) VALUES ('" + username + "','" + password + "');", function(err, rows, fields) {
+         database.beginTransaction(function(err){
             dbQueryCheck(err);
             
-            //Login
-            database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
+            database.query("INSERT INTO user_profiles(first_name) VALUES ('" + username + "');", function(err, rows, fields) {
                dbQueryCheck(err);
-
-               //Create a token and return it
-               var claims = {
-                  sub: rows[0].id,
-                  pass: rows[0].password,
-               }
-               
-               var jwt = nJwt.create(claims, secretKey);
-               jwt.setExpiration(new Date().getTime() + (60*60*1000)); //1 hour expiration
-               var token = jwt.compact();
-               res.end(token);
-               return;
+               database.query("INSERT INTO users (username, password, profile_id) VALUES ('" + username + "','" + password + "', (SELECT profile_id FROM user_profiles WHERE first_name='" + username + "'));", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  //Login
+                  database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+      
+                     //Create a token and return it
+                     var claims = {
+                        sub: rows[0].id,
+                        pass: rows[0].password,
+                     }
+                     
+                     var jwt = nJwt.create(claims, secretKey);
+                     jwt.setExpiration(new Date().getTime() + (60*60*1000)); //1 hour expiration
+                     var token = jwt.compact();
+                     
+                     //Commit changes
+                     database.commit(function(err) {
+                        if (err) { 
+                           database.rollback(function() {
+                              dbQueryCheck(err);
+                           });
+                        }
+                     });
+                     
+                     res.end(token);
+                     return;
+                  });
+               });
             });
          });
       }
@@ -299,16 +316,17 @@ app.get("/api/auth/changePassword", function(req, res) {
 
 //User attempts to create a new group (In progress)
 app.get("/api/group/create", function(req, res) {
-   //Params: ?token, ?name, ?activity (optional)
-   //Returns "invalid params" if invalid params
-   //Returns "success" if group creation successful
+   
+   res.end("in dev");
+   return;
    
    var token = req.query.token;     //Auth token
    var name = req.query.name;       //Name of group
-   var activity = req.query.activity;   //Activity type (optional)
+   var activity = req.query.name;   //Activity type
+   var rules = req.query.rules;     //Group rules
    
    //Check if params are valid
-   if(token === undefined || name === undefined) {
+   if(name === undefined) {
       res.end("invalid params");
       return;
    }
@@ -316,17 +334,13 @@ app.get("/api/group/create", function(req, res) {
    //Sanitize input
    name = sanitizer.sanitize(name);
    activity = activity === null ? null : sanitizer.sanitize(activity);
+   rules = rules === null ? null : sanitizer.sanitize(rules);
    
    isAuthValid(token, function(isValid){
       if(isValid) {
-         
          //Add group to database
-         var dbQuery = activity = activity === null ? "INSERT INTO groups (group_name, start_date, expiry_date) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY);" : "INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');";
-         
-         database.query(dbQuery, function(err, rows, fields) {
+         database.query("INSERT INTO groups ;", function(err, rows, fields) {
             dbQueryCheck(err);
-            
-            res.end("success");
          });
       } else {
          checkAuth(token, function(response) {
@@ -347,7 +361,7 @@ app.get("/api/group/delete", function(req, res) {
    var groupId = req.query.groupId;
    
    //Check if params are valid
-   if(token === undefined || groupId === undefined) {
+   if(groupId === undefined) {
       res.end("invalid params");
       return;
    }
@@ -379,11 +393,14 @@ app.get("/api/group/delete", function(req, res) {
 //User attempts to view group members (In progress)
 app.get("/api/group/getMembers", function(req, res) {
    
+   res.end("in dev");
+   return;
+   
    var token = req.query.token;
    var groupId = req.query.groupId;
    
    //Check if params are valid
-   if(token === undefined || groupId === undefined) {
+   if(groupId === undefined) {
       res.end("invalid params");
       return;
    }
@@ -396,7 +413,7 @@ app.get("/api/group/getMembers", function(req, res) {
          //Select all users by group ID
          database.query("SELECT * FROM user_profiles WHERE id=( SELECT profile_id FROM memberships WHERE group_id='" + groupId + "' );", function(err, rows, fields) {
             dbQueryCheck(err);
-            res.end(JSON.stringify(rows));
+            res.end(rows);
             return;
          });
       } else {
