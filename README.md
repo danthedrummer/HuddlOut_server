@@ -46,3 +46,24 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/auth/register?token=token123&oldPassword=oldPw&newPassword=newPw*
 
 **RETURNS:** *"invalid params" if invalid params, "invalid id" if token sub is invalid, "invalid password" if password is invalid, token if update successful*
+
+### Groups
+#### Delete Group
+
+**GET:** *api/group/delete*
+
+**PARAMS:** *token, groupId*
+
+**EXAMPLE:** *api/auth/checkAuth?token=token123&groupId=5*
+
+**RETURNS:** *"invalid params" if invalid params, "success" if registration successful*
+
+#### Get Members
+
+**GET:** *api/group/getMembers*
+
+**PARAMS:** *token, groupId*
+
+**EXAMPLE:** *api/auth/getMembers?token=token123&groupId=5*
+
+**RETURNS:** *"invalid params" if invalid params, list of group members if successful*

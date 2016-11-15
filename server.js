@@ -17,6 +17,9 @@ var uuid = require('node-uuid'); //UUID generator for client/server authorizatio
 var secretKey = uuid.v4(); //Key used to create tokens, overwritten if already exists in DB
 var server; //The server
 
+/*
+ * Database getters for object
+*/
 
 /*
  * RESTful URIs
@@ -160,6 +163,7 @@ app.get("/api/auth/login", function(req, res) {
 //User attempts to register
 // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=paulwins&password=abcdefg
 // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=glennncullen&password=1234567
+// https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=aaron meaney&password=hunter2
 app.get("/api/auth/register", function(req, res) {
    //Params: ?username, ?password
    //Returns "invalid params" if invalid params
@@ -273,6 +277,125 @@ app.get("/api/auth/changePassword", function(req, res) {
       }
    });
 });
+
+/*
+ * GROUP
+*/
+
+//User attempts to create a new group
+app.get("/api/group/create", function(req, res) {
+   //Params: ?token, ?name, ?activity (optional)
+   //Returns "invalid params" if invalid params
+   //Returns "success" if group creation successful
+   
+   var token = req.query.token;     //Auth token
+   var name = req.query.name;       //Name of group
+   var activity = req.query.activity;   //Activity type (optional)
+   
+   //Check if params are valid
+   if(token === undefined || name === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize input
+   name = sanitizer.sanitize(name);
+   activity = activity === null ? null : sanitizer.sanitize(activity);
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Add group to database
+         var dbQuery = activity = activity === null ? "INSERT INTO groups (group_name, start_date, expiry_date) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY);" : "INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');";
+         
+         database.query(dbQuery, function(err, rows, fields) {
+            dbQueryCheck(err);
+            
+            res.end("success");
+         });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to delete a group
+app.get("/api/group/delete", function(req, res) {
+   //Params: ?token, ?groupId
+   //Returns "invalid params" if invalid params
+   //Returns "success" if registration successful
+   
+   var token = req.query.token;
+   var groupId = req.query.groupId;
+   
+   //Check if params are valid
+   if(token === undefined || groupId === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize group ID
+   groupId = sanitizer.sanitize(groupId);
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Delete group by ID
+         database.query("DELETE FROM groups WHERE ID='" + groupId + "';", function(err, rows, fields) {
+            dbQueryCheck(err);
+            
+            res.end("success");
+         });
+         
+         return;
+         
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to view group members
+app.get("/api/group/getMembers", function(req, res) {
+   
+   var token = req.query.token;
+   var groupId = req.query.groupId;
+   
+   //Check if params are valid
+   if(token === undefined || groupId === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize input
+   groupId = sanitizer.sanitize(groupId);
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         //Select all users by group ID
+         database.query("SELECT * FROM user_profiles WHERE id=( SELECT profile_id FROM memberships WHERE group_id='" + groupId + "' );", function(err, rows, fields) {
+            dbQueryCheck(err);
+            res.end(JSON.stringify(rows));
+            return;
+         });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+/*
+ * TEST
+*/
 
 //User does a thing
 app.get("/api/test/doSomething", function(req, res) {
