@@ -48,6 +48,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **RETURNS:** *"invalid params" if invalid params, "invalid id" if token sub is invalid, "invalid password" if password is invalid, token if update successful*
 
 ### Groups
+#### Create Group
+
+**GET:** *api/group/create*
+
+**PARAMS:** *token, name, activity*
+
+**EXAMPLE:** *api/auth/checkAuth?token=token123&name=the%20sesh&activity=pub*
+
+**RETURNS:** *"invalid params" if invalid params, "success" if registration successful*
+
 #### Delete Group
 
 **GET:** *api/group/delete*
@@ -67,3 +77,14 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/auth/getMembers?token=token123&groupId=5*
 
 **RETURNS:** *"invalid params" if invalid params, list of group members if successful*
+
+### Users
+#### Get Profile
+
+**GET:** *api/user/getProfile*
+
+**PARAMS:** *token, userId*
+
+**EXAMPLE:** *api/user/getProfile?token=token123&userId=1*
+
+**RETURNS:** *"invalid params" if invalid params, "not found" if user does not exist, profile as JSON if user found*

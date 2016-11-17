@@ -314,9 +314,9 @@ app.get("/api/auth/changePassword", function(req, res) {
  * GROUP
 */
 
-//User attempts to create a new group (In progress) TODO: Add membership creation
+//User attempts to create a new group
 app.get("/api/group/create", function(req, res) {
-   //Params: ?token, ?name, ?activity (optional)
+   //Params: ?token, ?name, ?activity
    //Returns "invalid params" if invalid params
    //Returns "success" if registration successful
    
@@ -325,7 +325,7 @@ app.get("/api/group/create", function(req, res) {
    var activity = req.query.activity;   //Activity type
    
    //Check if params are valid
-   if(name === undefined) {
+   if(token === undefined || name === undefined || activity === undefined) {
       res.end("invalid params");
       return;
    }
@@ -337,13 +337,30 @@ app.get("/api/group/create", function(req, res) {
    isAuthValid(token, function(isValid){
       if(isValid) {
          
-         //Add group to database
-         var dbQuery = activity = activity === null ? "INSERT INTO groups (group_name, start_date, expiry_date) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY);" : "INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');";
-         
-         database.query(dbQuery, function(err, rows, fields) {
+         database.beginTransaction(function(err){
             dbQueryCheck(err);
             
-            res.end("success");
+            database.query("INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');", function(err, rows, fields) {
+               dbQueryCheck(err);
+               
+               getTokenSub(token, function(sub){
+                  database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + sub + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     //Commit changes
+                     database.commit(function(err) {
+                        if (err) { 
+                           database.rollback(function() {
+                              dbQueryCheck(err);
+                           });
+                        }
+                     });
+                     
+                     res.end("success");
+                     return;
+                  });
+               });
+            });
          });
       } else {
          checkAuth(token, function(response) {
@@ -400,7 +417,7 @@ app.get("/api/group/getMembers", function(req, res) {
    var groupId = req.query.groupId;
    
    //Check if params are valid
-   if(groupId === undefined) {
+   if(token === undefined || groupId === undefined) {
       res.end("invalid params");
       return;
    }
@@ -512,7 +529,7 @@ app.get("/api/user/getProfile", function(req, res) {
    //Params: ?token, ?userId
    //Returns "invalid params" if invalid params
    //Returns "not found" if user does not exist
-   //Returns "success" if registration successful
+   //Returns profile as JSON if registration successful
    
    var token = req.query.token;
    var userId = req.query.userId;
