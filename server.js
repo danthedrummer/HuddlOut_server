@@ -504,6 +504,53 @@ app.get("/api/group/kickMember", function(req, res) {
 });
 
 /*
+ * USERS
+*/
+
+//Client gets user profile record
+app.get("/api/user/getProfile", function(req, res) {
+   //Params: ?token, ?userId
+   //Returns "invalid params" if invalid params
+   //Returns "not found" if user does not exist
+   //Returns "success" if registration successful
+   
+   var token = req.query.token;
+   var userId = req.query.userId;
+   
+   //Check if params are valid
+   if(token === undefined || userId === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize userId
+   userId = sanitizer.sanitize(userId);
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Delete group by ID
+         database.query("SELECT * FROM user_profiles WHERE profile_id='" + userId + "';", function(err, rows, fields) {
+            dbQueryCheck(err);
+            
+            if(rows.length == 0) {
+               res.end("not found");
+               return;
+            }
+            
+            res.end(JSON.stringify(rows[0]));
+            return;
+         });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+/*
  * TEST
 */
 
