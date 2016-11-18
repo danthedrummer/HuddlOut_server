@@ -3,7 +3,12 @@
 Third Year Project made with NodeJS.
 Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
+
+
 ## API Documentation
+
+*Note: All functions that require a token will return the same errors as /api/auth/checkAuth if the token is malformed or outdated.*
+
 ### Authentication
 #### Check user authentication
 
@@ -66,7 +71,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/auth/checkAuth?token=token123&groupId=5*
 
-**RETURNS:** *"invalid params" if invalid params, "success" if registration successful*
+**RETURNS:** *"invalid params" if invalid params, "not found" if group membership not found, "invalid role" if user is not group admin, "success" if deletion successful*
 
 #### Get Members
 

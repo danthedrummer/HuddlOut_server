@@ -337,13 +337,18 @@ app.get("/api/group/create", function(req, res) {
    isAuthValid(token, function(isValid){
       if(isValid) {
          
+         //Begin transaction
          database.beginTransaction(function(err){
             dbQueryCheck(err);
             
+            //Insert group record
             database.query("INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');", function(err, rows, fields) {
                dbQueryCheck(err);
                
+               //Get user token sub
                getTokenSub(token, function(sub){
+                  
+                  //Insert user as admin of group
                   database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + sub + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
                      dbQueryCheck(err);
                      
@@ -371,17 +376,19 @@ app.get("/api/group/create", function(req, res) {
    });
 });
 
-//User attempts to delete a group (In progress) //TODO: Add membership deletion
+//User attempts to delete a group
 app.get("/api/group/delete", function(req, res) {
    //Params: ?token, ?groupId
    //Returns "invalid params" if invalid params
-   //Returns "success" if registration successful
+   //Returns "not found" if group membership not found
+   //Returns "invalid role" if user is not group admin
+   //Returns "success" if deletion successful
    
    var token = req.query.token;
    var groupId = req.query.groupId;
    
    //Check if params are valid
-   if(groupId === undefined) {
+   if(token === undefined || groupId === undefined) {
       res.end("invalid params");
       return;
    }
@@ -392,15 +399,51 @@ app.get("/api/group/delete", function(req, res) {
    isAuthValid(token, function(isValid){
       if(isValid) {
          
-         //Delete group by ID
-         database.query("DELETE FROM groups WHERE ID='" + groupId + "';", function(err, rows, fields) {
+         //Begin transaction
+         database.beginTransaction(function(err){
             dbQueryCheck(err);
             
-            res.end("success");
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Check if user is owner of the group
+               database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_id='" + groupId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("not found");
+                     return;
+                  }
+                  
+                  if(rows[0].group_role != "ADMIN") {
+                     res.end("invalid role");
+                     return;
+                  }
+                  
+                  //Delete memberships
+                  database.query("DELETE FROM group_memberships WHERE group_id='" + groupId + "';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     //Delete group
+                     database.query("DELETE FROM groups WHERE group_id='" + groupId + "';", function(err, rows, fields) {
+                         dbQueryCheck(err);
+                         
+                        //Commit changes
+                        database.commit(function(err) {
+                           if (err) { 
+                              database.rollback(function() {
+                                 dbQueryCheck(err);
+                              });
+                           }
+                        });
+                         
+                        res.end("success");
+                        return;
+                     });
+                  });
+               });
+            });
          });
-         
-         return;
-         
       } else {
          checkAuth(token, function(response) {
             res.end(response);
