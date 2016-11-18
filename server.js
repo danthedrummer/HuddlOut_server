@@ -18,11 +18,7 @@ var secretKey = uuid.v4(); //Key used to create tokens, overwritten if already e
 var server; //The server
 
 /*
- * Database getters for object
-*/
-
-/*
- * RESTful URIs
+ * API URIs
 */
 
 /*
@@ -350,21 +346,28 @@ app.get("/api/group/create", function(req, res) {
                //Get user token sub
                getTokenSub(token, function(sub){
                   
-                  //Insert user as admin of group
-                  database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + sub + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
+                  //Get profile id
+                  database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
                      dbQueryCheck(err);
                      
-                     //Commit changes
-                     database.commit(function(err) {
-                        if (err) { 
-                           database.rollback(function() {
-                              dbQueryCheck(err);
-                           });
-                        }
-                     });
+                     var profileId = rows[0].profile_id;
                      
-                     res.end("success");
-                     return;
+                     //Insert user as admin of group
+                     database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + profileId + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
+                        dbQueryCheck(err);
+                        
+                        //Commit changes
+                        database.commit(function(err) {
+                           if (err) { 
+                              database.rollback(function() {
+                                 dbQueryCheck(err);
+                              });
+                           }
+                        });
+                        
+                        res.end("success");
+                        return;
+                     });
                   });
                });
             });
@@ -606,6 +609,182 @@ app.get("/api/group/inviteMember", function(req, res) {
                });
             });
          });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//Client checks if there are any group invites
+app.get("/api/group/checkInvites", function(req, res) {
+   //Params: ?token
+   //Returns "invalid params" if invalid params
+   //Returns "user not found" if the user profile cannot be found
+   //Returns "no invites" if there are no invites
+   //Returns array of group ids if there are invites
+   
+   var token = req.query.token;
+   
+   if(token === undefined) {
+      res.end("invalid params");
+   }
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err){
+            dbQueryCheck(err);
+            
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Get profile id
+               database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("user not found");
+                     return;
+                  }
+                  
+                  var profileId = rows[0].profile_id;
+                  
+                  //Get invites
+                  database.query("SELECT * FROM group_memberships WHERE profile_id='" + profileId + "' AND group_role='INVITED';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     if(rows.length == 0) {
+                        res.end("no invites");
+                        return;
+                     }
+                     
+                     var invites = [];
+                     
+                     for(var i = 0; i < rows.length; i++) {
+                        invites.push(rows[i].group_id);
+                     }
+                     
+                     //Commit changes
+                     database.commit(function(err) {
+                        if (err) { 
+                           database.rollback(function() {
+                              dbQueryCheck(err);
+                           });
+                        }
+                     });
+                     
+                     res.end(JSON.stringify(invites));
+                     return;
+                  });
+               });
+            });
+         });
+         
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//Client accepts or denies a group invite
+app.get("/api/group/resolveInvite", function(req, res) {
+   //Params: ?token, ?groupId, ?action (accept/deny)
+   //Returns "invalid params" if invalid params
+   //Returns "user not found" if the user profile cannot be found
+   //Returns "no invites" if no invites where found
+   //Returns "success" if action completes successfully
+   
+   var token = req.query.token;
+   var groupId = req.query.groupId;
+   var action = req.query.action;
+   
+   if(token === undefined || action === undefined || groupId === null || (action != "accept" && action != "deny")) {
+      res.end("invalid params");
+      return;
+   }
+   
+   var joinGroup = (action == "accept");
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err){
+            dbQueryCheck(err);
+            
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Get profile id
+               database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("user not found")
+                     return;
+                  }
+                  
+                  var profileId = rows[0].profile_id;
+               
+                  //Check if group invite is valid
+                  database.query("SELECT membership_id FROM group_memberships WHERE profile_id='" + profileId + "' AND group_id='" + groupId + "' AND group_role='INVITED';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     if(rows.length == 0) {
+                        res.end("no invites");
+                        return;
+                     }
+                     
+                     var membershipId = rows[0].membership_id;
+                     
+                     if(joinGroup) {
+                        //Add user to the group
+                        database.query("UPDATE group_memberships SET group_role='MEMBER' WHERE membership_id='" + membershipId + "';", function(err, rows, fields) {
+                           dbQueryCheck(err);
+                           
+                           //Commit changes
+                           database.commit(function(err) {
+                              if (err) { 
+                                 database.rollback(function() {
+                                    dbQueryCheck(err);
+                                 });
+                              }
+                           });
+                           
+                           res.end("success");
+                           return;
+                        });
+                     }
+                     else {
+                        //Delete invitation
+                        database.query("DELETE FROM group_memberships WHERE membership_id='" + membershipId + "';", function(err, rows, fields) {
+                           dbQueryCheck(err);
+                           
+                           //Commit changes
+                           database.commit(function(err) {
+                              if (err) { 
+                                 database.rollback(function() {
+                                    dbQueryCheck(err);
+                                 });
+                              }
+                           });
+                           
+                           res.end("success");
+                           return;
+                        });
+                     }
+                  });
+               });
+            });
+         });
+         
       } else {
          checkAuth(token, function(response) {
             res.end(response);

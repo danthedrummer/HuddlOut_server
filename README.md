@@ -26,7 +26,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *username, password*
 
-**EXAMPLE:** *api/auth/checkAuth?username=john%20doe&password=plain_pw*
+**EXAMPLE:** *api/auth/login?username=john%20doe&password=plain_pw*
 
 **RETURNS:** *"invalid params" = params are invalid, "invalid username" = username is invalid, "invalid password" = password is invalid, token = token authorised*
 
@@ -50,7 +50,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *token, oldPassword, newPassword*
 
-**EXAMPLE:** *api/auth/register?token=token123&oldPassword=oldPw&newPassword=newPw*
+**EXAMPLE:** *api/auth/changePassword?token=token123&oldPassword=oldPw&newPassword=newPw*
 
 **RETURNS:** *"invalid params" if invalid params, "invalid id" if token sub is invalid, "invalid password" if password is invalid, token if update successful*
 
@@ -61,7 +61,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *token, name, activity*
 
-**EXAMPLE:** *api/auth/checkAuth?token=token123&name=the%20sesh&activity=pub*
+**EXAMPLE:** *api/group/create?token=token123&name=the%20sesh&activity=pub*
 
 **RETURNS:** *"invalid params" if invalid params, "success" if registration successful*
 
@@ -71,7 +71,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *token, groupId*
 
-**EXAMPLE:** *api/auth/checkAuth?token=token123&groupId=5*
+**EXAMPLE:** *api/group/delete?token=token123&groupId=5*
 
 **RETURNS:** *"invalid params" if invalid params, "not found" if group membership not found, "invalid role" if user is not group admin, "success" if deletion successful*
 
@@ -81,9 +81,29 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *token, groupId, profileId*
 
-**EXAMPLE:** *api/auth/checkAuth?token=token123&groupId=5&profileId=12*
+**EXAMPLE:** *api/group/inviteMember?token=token123&groupId=5&profileId=12*
 
 **RETURNS:** *"invalid params" if invalid params, "membership not found" if the membership is not found, "invalid role" if user is not an admin or moderator, "user not found" if invited user does not exist, "invitation already exists" if invited user already contains an invite, "already member" if user is already part of the group, "success" if invitation successful*
+
+#### Check Invites
+
+**GET:** *api/group/checkInvites*
+
+**PARAMS:** *token*
+
+**EXAMPLE:** *api/group/checkInvites?token=token123*
+
+**RETURNS:** *"invalid params" if invalid params, "user not found" if the user profile cannot be found, "no invites" if there are no invites, array of group ids if there are invites*
+
+#### Resolve Invite
+
+**GET:** *api/group/resolveInvite*
+
+**PARAMS:** *token, groupId, action (accept / deny)*
+
+**EXAMPLE:** *api/group/resolveInvite?token=token123&groupId=2&action=accept*
+
+**RETURNS:** *"invalid params" if invalid params, "user not found" if the user profile cannot be found, "no invites" if no invites where found, "success" if action completes successfully*
 
 #### Get Members
 
@@ -91,7 +111,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *token, groupId*
 
-**EXAMPLE:** *api/auth/getMembers?token=token123&groupId=5*
+**EXAMPLE:** *api/group/getMembers?token=token123&groupId=5*
 
 **RETURNS:** *"invalid params" if invalid params, "not member" if user is not member of the group, list of profile ids of group member profiles if successful*
 
