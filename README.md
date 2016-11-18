@@ -113,7 +113,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/group/kickMember?token=token123&groupId=2&profileId=3*
 
-**RETURNS:** *"invalid params" if invalid params, "membership not found" if the membership is not found, "invalid role" if user is not an admin or moderator, "user not found" if invited user does not exist "invitation already exists" if invited user already contains an invite, "already member" if user is already part of the group, "success" if invitation successful*
+**RETURNS:** *"invalid params" if invalid params, "membership not found" if user is not member of the group, "invalid role" if user is not an admin or moderator, "dont kick yourself" if user tried to kick themself, "user not found" if user is not in the group, "already kicked" if user was already kicked, "success" if kick is successful*
 
 #### Get Members
 
