@@ -105,6 +105,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "user not found" if the user profile cannot be found, "no invites" if no invites where found, "success" if action completes successfully*
 
+#### Kick Member
+
+**GET:** *api/group/kickMember*
+
+**PARAMS:** *token, groupId, profileId*
+
+**EXAMPLE:** *api/group/kickMember?token=token123&groupId=2&profileId=3*
+
+**RETURNS:** *"invalid params" if invalid params, "membership not found" if the membership is not found, "invalid role" if user is not an admin or moderator, "user not found" if invited user does not exist "invitation already exists" if invited user already contains an invite, "already member" if user is already part of the group, "success" if invitation successful*
+
 #### Get Members
 
 **GET:** *api/group/getMembers*

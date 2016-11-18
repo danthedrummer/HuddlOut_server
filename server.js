@@ -794,36 +794,97 @@ app.get("/api/group/resolveInvite", function(req, res) {
    });
 });
 
-//User attempts to kick a member from the group (In progress)
+//User attempts to kick a member from the group
 app.get("/api/group/kickMember", function(req, res) {
    //Params: ?token, ?groupId
    //Returns "invalid params" if invalid params
-   //Returns "success" if registration successful
+   //Returns "membership not found" if user is not member of the group
+   //Returns "invalid role" if user is not an admin or moderator
+   //Returns "dont kick yourself" if user tried to kick themself
+   //Returns "user not found" if user is not in the group
+   //Returns "already kicked" if user was already kicked
+   //Returns "success" if kick is successful
    
    var token = req.query.token;
    var groupId = req.query.groupId;
+   var profileId = req.query.profileId;
    
    //Check if params are valid
-   if(token === undefined || groupId === undefined) {
+   if(token === undefined || groupId === undefined || profileId === undefined) {
       res.end("invalid params");
       return;
    }
    
    //Sanitize group ID
    groupId = sanitizer.sanitize(groupId);
+   profileId = sanitizer.sanitize(profileId);
    
    isAuthValid(token, function(isValid){
       if(isValid) {
          
-         //Delete group by ID
-         database.query("DELETE FROM groups WHERE ID='" + groupId + "';", function(err, rows, fields) {
+         //Begin transaction
+         database.beginTransaction(function(err){
             dbQueryCheck(err);
             
-            res.end("success");
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Check if user is owner of the group
+               database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_id='" + groupId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("membership not found");
+                     return;
+                  }
+                  
+                  if(rows[0].group_role != "ADMIN" && rows[0].group_role != "MODERATOR") {
+                     res.end("invalid role");
+                     return;
+                  }
+                  
+                  //Check if user exists
+                  database.query("SELECT * FROM group_memberships WHERE profile_id='" + profileId + "' AND group_id='" + groupId + "';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     if(rows.length == 0) {
+                        res.end("user not found");
+                        return;
+                     }
+                     
+                     if(rows[0].group_role == "KICKED") {
+                        res.end("already kicked");
+                        return;
+                     }
+                     
+                     if(rows[0].group_role == "ADMIN") {
+                        res.end("dont kick yourself");
+                        return;
+                     }
+                     
+                     var membershipId = rows[0].membership_id;
+                     
+                     //Check if user exists
+                     database.query("UPDATE group_memberships SET group_role='KICKED' WHERE membership_id='" + membershipId + "';", function(err, rows, fields) {
+                        dbQueryCheck(err);
+                        
+                        //Commit changes
+                        database.commit(function(err) {
+                           if (err) { 
+                              database.rollback(function() {
+                                 dbQueryCheck(err);
+                              });
+                           }
+                        });
+                        
+                        res.end("success");
+                        return;
+                     });
+                  });
+               });
+            });
          });
-         
-         return;
-         
+
       } else {
          checkAuth(token, function(response) {
             res.end(response);
