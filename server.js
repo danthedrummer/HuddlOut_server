@@ -460,7 +460,7 @@ app.get("/api/group/getMembers", function(req, res) {
    //Params: ?token, ?groupId
    //Returns "invalid params" if invalid params
    //Returns "not member" if user is not member of the group
-   //Returns list of profile ids of group member profiles if successful
+   //Returns list of ids of group member profiles if successful
    
    var token = req.query.token;
    var groupId = req.query.groupId;
@@ -513,36 +513,99 @@ app.get("/api/group/getMembers", function(req, res) {
    });
 });
 
-//User attempts to invite a member to the group (In progress)
+//User attempts to invite a member to the group
 app.get("/api/group/inviteMember", function(req, res) {
-   //Params: ?token, ?groupId
+   //Params: ?token, ?groupId, ?profileId
    //Returns "invalid params" if invalid params
-   //Returns "success" if registration successful
+   //Returns "membership not found" if the membership is not found
+   //Returns "invalid role" if user is not an admin or moderator
+   //Returns "user not found" if invited user does not exist
+   //Returns "invitation already exists" if invited user already contains an invite
+   //Returns "already member" if user is already part of the group
+   //Returns "success" if invitation successful
    
    var token = req.query.token;
    var groupId = req.query.groupId;
+   var profileId = req.query.profileId;
    
    //Check if params are valid
-   if(token === undefined || groupId === undefined) {
+   if(token === undefined || groupId === undefined || profileId === undefined) {
       res.end("invalid params");
       return;
    }
    
-   //Sanitize group ID
+   //Sanitize params
    groupId = sanitizer.sanitize(groupId);
+   profileId = sanitizer.sanitize(profileId);
    
    isAuthValid(token, function(isValid){
       if(isValid) {
          
-         //Delete group by ID
-         database.query("DELETE FROM groups WHERE ID='" + groupId + "';", function(err, rows, fields) {
+         //Begin transaction
+         database.beginTransaction(function(err){
             dbQueryCheck(err);
             
-            res.end("success");
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Check if user is owner of the group
+               database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_id='" + groupId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("membership not found");
+                     return;
+                  }
+                  
+                  if(rows[0].group_role != "ADMIN" && rows[0].group_role != "MODERATOR") {
+                     res.end("invalid role");
+                     return;
+                  }
+                  
+                  //Check if invited user exists
+                  database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     if(rows.length == 0) {
+                        res.end("user not found")
+                     }
+                     
+                     //Check if user is already a member
+                     database.query("SELECT * FROM group_memberships WHERE profile_id='" + profileId + "' AND group_id='" + groupId + "';", function(err, rows, fields) {
+                        dbQueryCheck(err);
+                        
+                        if(rows.length > 0) {
+                           if(rows[0].group_role == "INVITED") {
+                              res.end("invitation already exists");
+                              return;
+                           }
+                           else {
+                              res.end("already member");
+                              return;
+                           }
+                        }
+                        
+                        //Add invitation to database
+                        database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + profileId + "','" + groupId + "','INVITED');", function(err, rows, fields) {
+                           dbQueryCheck(err);
+                           
+                           //Commit changes
+                           database.commit(function(err) {
+                              if (err) { 
+                                 database.rollback(function() {
+                                    dbQueryCheck(err);
+                                 });
+                              }
+                           });
+                           
+                           res.end("success");
+                           return;
+                        });
+                     });
+                  });
+               });
+            });
          });
-         
-         return;
-         
       } else {
          checkAuth(token, function(response) {
             res.end(response);
@@ -597,28 +660,28 @@ app.get("/api/group/kickMember", function(req, res) {
 
 //Client gets user profile record
 app.get("/api/user/getProfile", function(req, res) {
-   //Params: ?token, ?userId
+   //Params: ?token, ?profileId
    //Returns "invalid params" if invalid params
    //Returns "not found" if user does not exist
    //Returns profile as JSON if registration successful
    
    var token = req.query.token;
-   var userId = req.query.userId;
+   var profileId = req.query.profileId;
    
    //Check if params are valid
-   if(token === undefined || userId === undefined) {
+   if(token === undefined || profileId === undefined) {
       res.end("invalid params");
       return;
    }
    
-   //Sanitize userId
-   userId = sanitizer.sanitize(userId);
+   //Sanitize profileId
+   profileId = sanitizer.sanitize(profileId);
    
    isAuthValid(token, function(isValid){
       if(isValid) {
          
          //Delete group by ID
-         database.query("SELECT * FROM user_profiles WHERE profile_id='" + userId + "';", function(err, rows, fields) {
+         database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
             dbQueryCheck(err);
             
             if(rows.length == 0) {
@@ -708,7 +771,7 @@ function initServer() {
    }
 }
 
-//Check for database errors. Shutdown server under event of errors.
+//Check for database errors. Shutdown server under event of errors
 function dbQueryCheck(err) {
    if(err) { 
       console.log("Database query error: " + err);

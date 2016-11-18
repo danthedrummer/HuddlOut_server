@@ -42,6 +42,8 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters.*
 
+**PRIVACY TYPES:** *PUBLIC - Account can be accessed by other users, PRIVATE - Account cannot be accessed by other users*
+
 #### Change password
 
 **GET:** *api/auth/changePassword*
@@ -73,6 +75,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "not found" if group membership not found, "invalid role" if user is not group admin, "success" if deletion successful*
 
+#### Invite Member
+
+**GET:** *api/group/inviteMember*
+
+**PARAMS:** *token, groupId, profileId*
+
+**EXAMPLE:** *api/auth/checkAuth?token=token123&groupId=5&profileId=12*
+
+**RETURNS:** *"invalid params" if invalid params, "membership not found" if the membership is not found, "invalid role" if user is not an admin or moderator, "user not found" if invited user does not exist, "invitation already exists" if invited user already contains an invite, "already member" if user is already part of the group, "success" if invitation successful*
+
 #### Get Members
 
 **GET:** *api/group/getMembers*
@@ -83,13 +95,15 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "not member" if user is not member of the group, list of profile ids of group member profiles if successful*
 
+**MEMBERSHIP TYPES:** *ADMIN - Full control, MODERATOR - All admin control except for group deletion, MEMBER - No control, INVITED - Invited user*
+
 ### Users
 #### Get Profile
 
 **GET:** *api/user/getProfile*
 
-**PARAMS:** *token, userId*
+**PARAMS:** *token, profileId*
 
-**EXAMPLE:** *api/user/getProfile?token=token123&userId=1*
+**EXAMPLE:** *api/user/getProfile?token=token123&profileId=1*
 
 **RETURNS:** *"invalid params" if invalid params, "not found" if user does not exist, profile as JSON if user found*
