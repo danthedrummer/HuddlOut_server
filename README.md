@@ -115,7 +115,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "membership not found" if user is not member of the group, "invalid role" if user is not an admin or moderator, "dont kick yourself" if user tried to kick themself, "user not found" if user is not in the group, "already kicked" if user was already kicked, "success" if kick is successful*
 
-#### Check Invites
+#### Check Kicks
 
 **GET:** *api/group/checkKicks*
 
