@@ -81,7 +81,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/auth/getMembers?token=token123&groupId=5*
 
-**RETURNS:** *"invalid params" if invalid params, list of group members if successful*
+**RETURNS:** *"invalid params" if invalid params, "not member" if user is not member of the group, list of profile ids of group member profiles if successful*
 
 ### Users
 #### Get Profile

@@ -161,9 +161,6 @@ app.get("/api/auth/login", function(req, res) {
 });
 
 //User attempts to register
-// https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=paulwins&password=abcdefg
-// https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=glennncullen&password=1234567
-// https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=aaron meaney&password=hunter2
 app.get("/api/auth/register", function(req, res) {
    //Params: ?username, ?password
    //Returns "invalid params" if invalid params
@@ -171,6 +168,11 @@ app.get("/api/auth/register", function(req, res) {
    //Returns "invalid username" if invalid username
    //Returns "invalid password" if password is invalid
    //Returns token if registration successful
+   
+   // Examples:
+   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=paulwins&password=abcdefg
+   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=glennncullen&password=1234567
+   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=aaron meaney&password=hunter2
    
    var username = req.query.username;
    var password = req.query.password;
@@ -453,8 +455,12 @@ app.get("/api/group/delete", function(req, res) {
    });
 });
 
-//User attempts to view group members (In progress)
+//User attempts to view group members
 app.get("/api/group/getMembers", function(req, res) {
+   //Params: ?token, ?groupId
+   //Returns "invalid params" if invalid params
+   //Returns "not member" if user is not member of the group
+   //Returns list of profile ids of group member profiles if successful
    
    var token = req.query.token;
    var groupId = req.query.groupId;
@@ -470,11 +476,33 @@ app.get("/api/group/getMembers", function(req, res) {
    
    isAuthValid(token, function(isValid){
       if(isValid) {
-         //Select all users by group ID
-         database.query("SELECT * FROM user_profiles WHERE id=( SELECT profile_id FROM memberships WHERE group_id='" + groupId + "' );", function(err, rows, fields) {
-            dbQueryCheck(err);
-            res.end(rows);
-            return;
+         
+         //Get user token sub
+         getTokenSub(token, function(sub){
+            
+            //Check if user is in group
+            database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_id='" + groupId + "';", function(err, rows, fields) {
+               dbQueryCheck(err);
+               
+               if(rows.length == 0) {
+                  res.end("not member");
+                  return;
+               }
+               
+               //Get profile ids of members of the group
+               database.query("SELECT profile_id FROM group_memberships WHERE group_id='" + groupId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  var userIds = [];
+                  
+                  for(var i = 0; i < rows.length; i++) {
+                     userIds.push(rows[i].profile_id);
+                  }
+                  
+                  res.end(JSON.stringify(userIds));
+                  return;
+               });
+            });
          });
       } else {
          checkAuth(token, function(response) {
