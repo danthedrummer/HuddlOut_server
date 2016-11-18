@@ -115,6 +115,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "membership not found" if user is not member of the group, "invalid role" if user is not an admin or moderator, "dont kick yourself" if user tried to kick themself, "user not found" if user is not in the group, "already kicked" if user was already kicked, "success" if kick is successful*
 
+#### Check Invites
+
+**GET:** *api/group/checkKicks*
+
+**PARAMS:** *token*
+
+**EXAMPLE:** *api/group/checkKicks?token=token123*
+
+**RETURNS:** *"invalid params" if invalid params, "not kicked" if there are no kicks, array of group ids that the user has been kicked from*
+
 #### Get Members
 
 **GET:** *api/group/getMembers*
@@ -125,7 +135,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "not member" if user is not member of the group, list of profile ids of group member profiles if successful*
 
-**MEMBERSHIP TYPES:** *ADMIN - Full control, MODERATOR - All admin control except for group deletion, MEMBER - No control, INVITED - Invited user*
+**MEMBERSHIP TYPES:** *ADMIN - Full control (Only owner is admin), MODERATOR - All admin control except for group deletion, MEMBER - No control, INVITED - Invited user, KICKED - Kicked user*
 
 ### Users
 #### Get Profile

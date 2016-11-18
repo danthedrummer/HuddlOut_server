@@ -693,7 +693,7 @@ app.get("/api/group/checkInvites", function(req, res) {
    });
 });
 
-//Client accepts or denies a group invite
+//User accepts or denies a group invite
 app.get("/api/group/resolveInvite", function(req, res) {
    //Params: ?token, ?groupId, ?action (accept/deny)
    //Returns "invalid params" if invalid params
@@ -880,6 +880,75 @@ app.get("/api/group/kickMember", function(req, res) {
                         res.end("success");
                         return;
                      });
+                  });
+               });
+            });
+         });
+
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//Client checks if they have been kicked from any groups
+app.get("/api/group/checkKicks", function(req, res) {
+   //Params: ?token
+   //Returns "invalid params" if invalid params
+   //Returns "not kicked" if there are no kicks
+   //Returns array of group ids that the user has been kicked from
+   
+   var token = req.query.token;
+   
+   //Check if params are valid
+   if(token === undefined) {
+      res.end("invalid params");
+      return;
+   }
+
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err){
+            dbQueryCheck(err);
+            
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Check if user is owner of the group
+               database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_role='KICKED';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("not kicked");
+                     return;
+                  }
+                  
+                  var kicks = [];
+                  
+                  for(var i = 0; i < rows.length; i++) {
+                     kicks.push(rows[i].group_id);
+                  }
+
+                  //Delete user records from kicked groups
+                  database.query("DELETE FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_role='KICKED';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     //Commit changes
+                     database.commit(function(err) {
+                        if (err) { 
+                           database.rollback(function() {
+                              dbQueryCheck(err);
+                           });
+                        }
+                     });
+                     
+                     res.end(JSON.stringify(kicks));
+                     return;
                   });
                });
             });
