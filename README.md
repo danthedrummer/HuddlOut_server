@@ -38,7 +38,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/auth/register?username=john%20doe&password=plain_pw*
 
-**RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, "success" if registration successful*
+**RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, token if registration successful*
 
 **NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters.*
 
@@ -63,7 +63,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/group/create?token=token123&name=the%20sesh&activity=pub*
 
-**RETURNS:** *"invalid params" if invalid params, "success" if registration successful*
+**RETURNS:** *"invalid params" if invalid params, group id if registration successful*
 
 #### Delete Group
 
@@ -74,6 +74,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/group/delete?token=token123&groupId=5*
 
 **RETURNS:** *"invalid params" if invalid params, "not found" if group membership not found, "invalid role" if user is not group admin, "success" if deletion successful*
+
+#### Leave Group
+
+**GET:** *api/group/leave*
+
+**PARAMS:** *token, groupId*
+
+**EXAMPLE:** *api/group/leave?token=token123&groupId=5*
+
+**RETURNS:** *"invalid params" if invalid params, "not found" if group membership not found, "invalid role" if user is group admin, "success" if deletion successful*
 
 #### Invite Member
 

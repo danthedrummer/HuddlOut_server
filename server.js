@@ -316,7 +316,7 @@ app.get("/api/auth/changePassword", function(req, res) {
 app.get("/api/group/create", function(req, res) {
    //Params: ?token, ?name, ?activity
    //Returns "invalid params" if invalid params
-   //Returns "success" if registration successful
+   //Returns group id if registration successful
    
    var token = req.query.token;     //Auth token
    var name = req.query.name;       //Name of group
@@ -356,17 +356,25 @@ app.get("/api/group/create", function(req, res) {
                      database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + profileId + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
                         dbQueryCheck(err);
                         
-                        //Commit changes
-                        database.commit(function(err) {
-                           if (err) { 
-                              database.rollback(function() {
-                                 dbQueryCheck(err);
-                              });
-                           }
+                        database.query("SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1", function(err, rows, fields) {
+                           dbQueryCheck(err);
+                           
+                           var groupId = rows[0].group_id;
+                           
+                           //Commit changes
+                           database.commit(function(err) {
+                              if (err) { 
+                                 database.rollback(function() {
+                                    dbQueryCheck(err);
+                                 });
+                              }
+                           });
+                           
+                           console.log("Group added: " + groupId);
+                           
+                           res.end(groupId);
+                           return;
                         });
-                        
-                        res.end("success");
-                        return;
                      });
                   });
                });
@@ -445,6 +453,81 @@ app.get("/api/group/delete", function(req, res) {
                         res.end("success");
                         return;
                      });
+                  });
+               });
+            });
+         });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to leave a group
+app.get("/api/group/leave", function(req, res) {
+   //Params: ?token, ?groupId
+   //Returns "invalid params" if invalid params
+   //Returns "not found" if group membership not found
+   //Returns "invalid role" if user is group admin
+   //Returns "success" if deletion successful
+   
+   var token = req.query.token;
+   var groupId = req.query.groupId;
+   
+   //Check if params are valid
+   if(token === undefined || groupId === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize group ID
+   groupId = sanitizer.sanitize(groupId);
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err){
+            dbQueryCheck(err);
+            
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Check if user is owner of the group
+               database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_id='" + groupId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("not found");
+                     return;
+                  }
+                  
+                  if(rows[0].group_role == "ADMIN") {
+                     res.end("invalid role");
+                     return;
+                  }
+                  
+                  //Get membership ID to delete
+                  var membershipId = rows[0].membership_id;
+                  
+                  //Delete memberships
+                  database.query("DELETE FROM group_memberships WHERE membership_id='" + membershipId + "';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     //Commit changes
+                     database.commit(function(err) {
+                        if (err) { 
+                           database.rollback(function() {
+                              dbQueryCheck(err);
+                           });
+                        }
+                     });
+                      
+                     res.end("success");
+                     return;
                   });
                });
             });
@@ -796,7 +879,7 @@ app.get("/api/group/resolveInvite", function(req, res) {
 
 //User attempts to kick a member from the group
 app.get("/api/group/kickMember", function(req, res) {
-   //Params: ?token, ?groupId
+   //Params: ?token, ?groupId, ?profieId
    //Returns "invalid params" if invalid params
    //Returns "membership not found" if user is not member of the group
    //Returns "invalid role" if user is not an admin or moderator
