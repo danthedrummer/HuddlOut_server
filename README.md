@@ -147,6 +147,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **MEMBERSHIP TYPES:** *ADMIN - Full control (Only owner is admin), MODERATOR - All admin control except for group deletion, MEMBER - No control, INVITED - Invited user, KICKED - Kicked user*
 
+#### Get Groups
+
+**GET:** *api/group/getGroups*
+
+**PARAMS:** *token*
+
+**EXAMPLE:** *api/group/getGroups?token=token123*
+
+**RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of a group, list of ids of groups if successful*
+
 ### Users
 #### Get Profile
 

@@ -599,6 +599,55 @@ app.get("/api/group/getMembers", function(req, res) {
    });
 });
 
+//User attempts to view groups they are a member of
+app.get("/api/group/getGroups", function(req, res) {
+   //Params: ?token
+   //Returns "invalid params" if invalid params
+   //Returns "no groups" if user is not member of a group
+   //Returns list of ids of groups if successful
+   
+   var token = req.query.token;
+   
+   //Check if params are valid
+   if(token === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Get user token sub
+         getTokenSub(token, function(sub){
+            
+            //Check if user is in group
+            database.query("SELECT group_id FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
+               dbQueryCheck(err);
+               
+               var groups = [];
+               
+               if(rows.length == 0) {
+                  res.end("not member");
+                  return;
+               }
+               
+               for(var i = 0; i < rows.length; i++) {
+                  groups.push(rows[i].group_id);
+               }
+               
+               res.end(JSON.stringify(groups));
+               return;
+            });
+         });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
 //User attempts to invite a member to the group
 app.get("/api/group/inviteMember", function(req, res) {
    //Params: ?token, ?groupId, ?profileId
