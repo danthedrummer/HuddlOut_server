@@ -16,6 +16,7 @@ var nJwt = require("njwt"); //Javascript token generator
 var uuid = require('node-uuid'); //UUID generator for client/server authorization
 var secretKey = uuid.v4(); //Key used to create tokens, overwritten if already exists in DB
 var server; //The server
+var dir_profile_pictures = __dirname + "/profile_pictures/"; //Directory for profile pictures
 
 /*
  * API URIs
@@ -1265,6 +1266,69 @@ app.get("/api/user/getProfile", function(req, res) {
             });
          });
          
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//Client downloads profile pictures
+app.get("/api/user/getProfilePictures", function(req, res) {
+   //Params: ?token
+   //Returns "invalid params" if invalid params
+   //Returns list of profile pictures
+   
+   var token = req.query.token;
+
+   //Check if params are valid
+   if(token === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+app.get('/api/user/downloadPicture', function(req, res){
+   //Params: ?token, ?filename
+   //Returns "invalid params" if invalid params
+   //Returns an error if the file cannot be found, or a backtracking has been attempted
+   //Returns a profile picture file if file is found
+   
+   var token = req.query.token;
+   var imageName = req.query.imageName;
+
+   //Check if params are valid
+   if(token === undefined || imageName === undefined) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Prevent URL backtracking
+   var file = imageName.replace('../', '');
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Download the file
+         res.sendFile(dir_profile_pictures + imageName, function(err){
+            if(err) {
+               res.end(err.toString());
+            }
+         });
+         return;
       } else {
          checkAuth(token, function(response) {
             res.end(response);

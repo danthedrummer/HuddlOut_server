@@ -177,3 +177,13 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/user/getProfile?token=token123&profileId=1*
 
 **RETURNS:** *"invalid params" if invalid params, "not found" if user does not exist, profile as JSON if user found*
+
+#### Download Picture
+
+**GET:** *api/user/downloadPicture*
+
+**PARAMS:** *token, imageName*
+
+**EXAMPLE:** *api/user/getProfile?token=token123&imageName=airplane.bmp*
+
+**RETURNS:** *"invalid params" if invalid params, error if the file cannot be found or a backtracking has been attempted, profile picture bitmap file if file is found*
