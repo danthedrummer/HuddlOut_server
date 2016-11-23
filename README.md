@@ -160,7 +160,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 ### Users
 #### Edit Profile
 
-**GET:** *api/user/getProfile*
+**GET:** *api/user/editProfile*
 
 **PARAMS:** *token, firstName, lastName, profilePicture, age, description, privacy*
 

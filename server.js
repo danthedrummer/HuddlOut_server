@@ -1227,18 +1227,44 @@ app.get("/api/user/getProfile", function(req, res) {
    isAuthValid(token, function(isValid){
       if(isValid) {
          
-         //Delete group by ID
-         database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
-            dbQueryCheck(err);
+         //Get user token sub
+         getTokenSub(token, function(sub){
             
-            if(rows.length == 0) {
-               res.end("not found");
-               return;
-            }
-            
-            res.end(JSON.stringify(rows[0]));
-            return;
+            //Get profile id
+            database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+               dbQueryCheck(err);
+               
+               var thisId = rows[0].profile_id;
+               
+               //Get user profile
+               database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  if(rows.length == 0) {
+                     res.end("not found");
+                     return;
+                  }
+                  
+                  //Return a private profile
+                  if(thisId != profileId && rows[0].privacy == "PRIVATE") {
+                     var privateProfile = {};
+                     privateProfile.profile_id = rows[0].profile_id;
+                     privateProfile.first_name = rows[0].first_name;
+                     privateProfile.last_name = rows[0].last_name;
+                     privateProfile.privacy = rows[0].privacy;
+                     
+                     res.end(JSON.stringify(privateProfile));
+                     return;
+                  }
+                  
+                  
+                  //Returns the public profile
+                  res.end(JSON.stringify(rows[0]));
+                  return;
+               });
+            });
          });
+         
       } else {
          checkAuth(token, function(response) {
             res.end(response);
