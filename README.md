@@ -207,3 +207,13 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/user/sendFriendRequest?token=token123&profileId=6*
 
 **RETURNS:** *"invalid params" if invalid params, "relationship already exists" if user_a already has a relationship with user_b, "user not found" if user_b cannot be found, "success" if friend request is successfully created*
+
+#### Get Friend Requests
+
+**GET:** *api/user/getFriendRequests*
+
+**PARAMS:** *token*
+
+**EXAMPLE:** *api/user/getFriendRequests?token=token123*
+
+**RETURNS:** *"invalid params" if invalid params, "no requests found" if there are no friend requests, list of friend requests*
