@@ -370,8 +370,6 @@ app.get("/api/group/create", function(req, res) {
                               }
                            });
                            
-                           console.log("Group added: " + groupId);
-                           
                            res.end(groupId);
                            return;
                         });
@@ -1099,6 +1097,114 @@ app.get("/api/group/checkKicks", function(req, res) {
  * USERS
 */
 
+//Client attempts to edit their profile
+app.get("/api/user/edit", function(req, res) {
+   //Params: ?token, ?firstName, ?lastName, ?profilePicture, ?age, ?description, ?privacy
+   //Returns "invalid params" if invalid params
+   //Returns "profile picture invalid range" if the profile picture value is invalid
+   //Returns "description invalid range" if the description value is too large
+   //Returns "privacy invalid value" if privacy does not match either "PUBLIC" or "PRIVATE"
+   //Returns "success" if edit is successful
+   
+   var token = req.query.token;                    //Auth token
+   var firstName = req.query.firstName;            //First Name
+   var lastName = req.query.lastName;              //Last Name
+   var profilePicture = req.query.profilePicture   //Profile Picture
+   var age = req.query.age;                        //Age
+   var desc = req.query.desc;                      //Description
+   var privacy = req.query.privacy;                //Privacy setting (PUBLIC, PRIVATE)
+   
+   //Check if params are valid
+   if(token === undefined ||
+   (firstName === undefined && 
+   lastName === undefined && 
+   profilePicture === undefined && 
+   age === undefined &&
+   desc === undefined &&
+   privacy === undefined)) {
+      res.end("invalid params");
+      return;
+   }
+   
+   //Sanitize input
+   firstName = firstName === undefined ? undefined : sanitizer.sanitize(firstName);
+   lastName = lastName === undefined ? undefined : sanitizer.sanitize(lastName);
+   profilePicture = profilePicture === undefined ? undefined : sanitizer.sanitize(profilePicture);
+   age = age === undefined ? undefined : sanitizer.sanitize(age);
+   desc = desc === undefined ? undefined : sanitizer.sanitize(desc);
+   privacy = privacy === undefined ? undefined : sanitizer.sanitize(privacy).toUpperCase();
+   
+   //Validate input
+   if(profilePicture !== undefined && profilePicture > 5) {
+      res.end("profile picture invalid range");
+      return;
+   }
+   
+   if(desc !== undefined && desc.length > 500) {
+      res.end("description invalid range");
+      return;
+   }
+   
+   if(privacy !== undefined && (privacy != "PUBLIC" && privacy != "PRIVATE")) {
+      res.end("privacy invalid value");
+      return;
+   }
+   
+   //Get queries for paramaters
+   var firstNameQuery = firstName === undefined ? undefined : "first_name='" + firstName + "'";
+   var lastNameQuery = lastName === undefined ? undefined : "last_name='" + lastName + "'";
+   var profilePictureQuery = profilePicture === undefined ? undefined : "profile_picture='" + profilePicture + "'";
+   var ageQuery = age === undefined ? undefined : "age='" + age + "'";
+   var descQuery = desc === undefined ? undefined : "description='" + desc + "'";
+   var privacyQuery = privacy === undefined ? undefined : "privacy='" + privacy + "'";
+   
+   isAuthValid(token, function(isValid){
+      if(isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err){
+            dbQueryCheck(err);
+               
+            //Get user token sub
+            getTokenSub(token, function(sub){
+               
+               //Get profile id
+               database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  //Build SQL query
+                  var profileId = rows[0].profile_id;
+                  var queryArray = [firstNameQuery, lastNameQuery, profilePictureQuery, ageQuery, descQuery, privacyQuery];
+                  var dbQuery = "UPDATE user_profiles SET " + buildSQLQuery(queryArray) + " WHERE profile_id='" + profileId + "';";
+
+                  //Update the DB
+                  database.query(dbQuery, function(err, rows, fields) {
+                     dbQueryCheck(err);
+                      
+                      //Commit changes
+                     database.commit(function(err) {
+                        if (err) { 
+                           database.rollback(function() {
+                              dbQueryCheck(err);
+                           });
+                        }
+                     });
+                     
+                     res.end("success");
+                     return;
+                  });
+               });
+            });
+         });
+      } else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
 //Client gets user profile record
 app.get("/api/user/getProfile", function(req, res) {
    //Params: ?token, ?profileId
@@ -1143,31 +1249,36 @@ app.get("/api/user/getProfile", function(req, res) {
 });
 
 /*
- * TEST
+ * Miscellaneous Functions
 */
 
-//User does a thing
-app.get("/api/test/doSomething", function(req, res) {
+//Builds an SQL query from optional paramaters
+function buildSQLQuery(queryArray) {
+   var finalQuery = "";
+   var validQueries = [];
    
-   var token = req.query.token;
-   var print = req.query.print;
-   
-   isAuthValid(token, function(isValid){
-      if(isValid) {
-         if(print === undefined) {
-            res.end("undefined string");
-            return;
-         }
-         res.end("returned string: " + print);
-         return;
-      } else {
-         checkAuth(token, function(response) {
-            res.end(response);
-            return;
-         });
+   //Remove undefined or null entries
+   for(var i = 0; i < queryArray.length; i++) {
+      if(queryArray[i] != null) {
+         validQueries.push(queryArray[i]);
       }
-   });
-});
+   }
+   
+   //Concatenate valid queries
+   for(var i = 0; i < validQueries.length; i++) {
+      
+      finalQuery += validQueries[i];
+      
+      if(i < validQueries.length - 1) {
+         finalQuery += ", ";
+      }
+   }
+   
+   console.log(finalQuery);
+   
+   //Return query
+   return finalQuery;
+}
 
 /*
  * Server Initialisation Code

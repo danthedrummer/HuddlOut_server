@@ -158,6 +158,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of a group, list of ids of groups if successful*
 
 ### Users
+#### Edit Profile
+
+**GET:** *api/user/getProfile*
+
+**PARAMS:** *token, firstName, lastName, profilePicture, age, description, privacy*
+
+**EXAMPLE:** *api/user/edit?token=123&firstName=John&lastName=Doe&profilePicture=3&age=23&description=I%20like%20programming!&privacy=PRIVATE*
+
+**RETURNS:** *"invalid params" if invalid params, "profile picture invalid range" if the profile picture value is invalid, "description invalid range" if the description value is too large, "privacy invalid value" if privacy does not match either "PUBLIC" or "PRIVATE", "success" if edit is successful*
+
 #### Get Profile
 
 **GET:** *api/user/getProfile*
