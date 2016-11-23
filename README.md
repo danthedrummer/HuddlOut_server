@@ -194,6 +194,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **PARAMS:** *token, imageName*
 
-**EXAMPLE:** *api/user/getProfile?token=token123&imageName=airplane.bmp*
+**EXAMPLE:** *api/user/downloadPicture?token=token123&imageName=airplane.bmp*
 
 **RETURNS:** *"invalid params" if invalid params, error if the file cannot be found or a backtracking has been attempted, profile picture bitmap file if file is found*
+
+#### Send Friend Request
+
+**GET:** *api/user/sendFriendRequest*
+
+**PARAMS:** *token, profileId*
+
+**EXAMPLE:** *api/user/sendFriendRequest?token=token123&profileId=6*
+
+**RETURNS:** *"invalid params" if invalid params, "relationship already exists" if user_a already has a relationship with user_b, "user not found" if user_b cannot be found, "success" if friend request is successfully created*
