@@ -939,7 +939,7 @@ app.get("/api/group/resolveInvite", function(req, res) {
 
 //User attempts to kick a member from the group
 app.get("/api/group/kickMember", function(req, res) {
-   //Params: ?token, ?groupId, ?profieId
+   //Params: ?token, ?groupId, ?profileId
    //Returns "invalid params" if invalid params
    //Returns "membership not found" if user is not member of the group
    //Returns "invalid role" if user is not an admin or moderator
@@ -1511,25 +1511,27 @@ app.get("/api/user/getFriendRequests", function(req, res) {
    });
 });
 
-//Client resolves a friend request (In progress)
+//Client resolves a friend request
 app.get("/api/user/resolveFriendRequest", function(req, res) {
-   //Params: ?token, ?profileId
+   //Params: ?token, ?profileId, ?action
    //Returns "invalid params" if invalid params
-   //Returns group id if registration successful
+   //Returns "cannot befriend yourself" if user tried to befriend themself
+   //Returns "invite not found" if invite does not exist
+   //Returns "success" if friend request action completes
 
    var token = req.query.token; //Auth token
-   var name = req.query.name; //Name of group
-   var activity = req.query.activity; //Activity type
+   var profileId = req.query.profileId; //Name of other profile
+   var action = req.query.action; //Activity type
 
    //Check if params are valid
-   if (token === undefined || name === undefined || activity === undefined) {
+   if (token === undefined || profileId === undefined || action === undefined || (action != "accept" && action != "deny")) {
       res.end("invalid params");
       return;
    }
 
    //Sanitize input
-   name = sanitizer.sanitize(name);
-   activity = activity === null ? null : sanitizer.sanitize(activity);
+   profileId = sanitizer.sanitize(profileId);
+   action = sanitizer.sanitize(action);
 
    isAuthValid(token, function(isValid) {
       if (isValid) {
@@ -1538,40 +1540,54 @@ app.get("/api/user/resolveFriendRequest", function(req, res) {
          database.beginTransaction(function(err) {
             dbQueryCheck(err);
 
-            //Insert group record
-            database.query("INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');", function(err, rows, fields) {
-               dbQueryCheck(err);
+            //Get user token sub
+            getTokenSub(token, function(sub) {
 
-               //Get user token sub
-               getTokenSub(token, function(sub) {
+               //Get profile id
+               database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
 
-                  //Get profile id
-                  database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  var thisId = rows[0].profile_id;
+                  
+                  //Check is user is having an existential crisis ;_;
+                  if(thisId == profileId) {
+                     res.end("cannot befriend yourself");
+                     return;
+                  }
+                  
+                  //Check if user exists
+                  database.query("SELECT * FROM user_relationships WHERE profile_a='" + profileId + "' AND profile_b='" + thisId + "' AND relationship_type='Invite';", function(err, rows, fields) {
                      dbQueryCheck(err);
-
-                     var profileId = rows[0].profile_id;
-
-                     //Insert user as admin of group
-                     database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + profileId + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
+                     
+                     if(rows.length == 0) {
+                        res.end("invite not found");
+                        return;
+                     }
+                     
+                     var relationshipId = rows[0].relationship_id;
+                     var dbQuery = "";
+                     
+                     if(action == "accept") {
+                        dbQuery = "UPDATE user_relationships SET relationship_type='Friend' WHERE relationship_id='" + relationshipId + "';";
+                     } else {
+                        dbQuery = "DELETE FROM user_relationships WHERE relationship_id='" + relationshipId + "'";
+                     }
+                     
+                     //Accept/Deny invite
+                     database.query(dbQuery, function(err, rows, fields) {
                         dbQueryCheck(err);
-
-                        database.query("SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1", function(err, rows, fields) {
-                           dbQueryCheck(err);
-
-                           var groupId = rows[0].group_id;
-
-                           //Commit changes
-                           database.commit(function(err) {
-                              if (err) {
-                                 database.rollback(function() {
-                                    dbQueryCheck(err);
-                                 });
-                              }
-                           });
-
-                           res.end(groupId);
-                           return;
+                        
+                        //Commit changes
+                        database.commit(function(err) {
+                           if (err) {
+                              database.rollback(function() {
+                                 dbQueryCheck(err);
+                              });
+                           }
                         });
+
+                        res.end("success");
+                        return;
                      });
                   });
                });
@@ -1664,7 +1680,7 @@ app.get("/api/user/getFriends", function(req, res) {
 });
 
 //Client deletes a friend (In progress)
-app.get("/api/user/getFriends", function(req, res) {
+app.get("/api/user/deleteFriend", function(req, res) {
    //Params: ?token, ?profileId
    //Returns "invalid params" if invalid params
    //Returns group id if registration successful

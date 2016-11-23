@@ -217,3 +217,13 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/user/getFriendRequests?token=token123*
 
 **RETURNS:** *"invalid params" if invalid params, "no requests found" if there are no friend requests, list of friend requests*
+
+#### Resolve Friend Request
+
+**GET:** *api/user/resolveFriendRequest*
+
+**PARAMS:** *token, profileId, action*
+
+**EXAMPLE:** *api/user/resolveFriendRequest?token=token123&profileId=7&action=accept*
+
+**RETURNS:** *"invalid params" if invalid params, "cannot befriend yourself" if user tried to befriend themself, "invite not found" if invite does not exist, "success" if friend request action completes*
