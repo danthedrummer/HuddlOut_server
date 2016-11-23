@@ -1102,7 +1102,6 @@ app.get("/api/group/checkKicks", function(req, res) {
 app.get("/api/user/edit", function(req, res) {
    //Params: ?token, ?firstName, ?lastName, ?profilePicture, ?age, ?description, ?privacy
    //Returns "invalid params" if invalid params
-   //Returns "profile picture invalid range" if the profile picture value is invalid
    //Returns "description invalid range" if the description value is too large
    //Returns "privacy invalid value" if privacy does not match either "PUBLIC" or "PRIVATE"
    //Returns "success" if edit is successful
@@ -1136,11 +1135,6 @@ app.get("/api/user/edit", function(req, res) {
    privacy = privacy === undefined ? undefined : sanitizer.sanitize(privacy).toUpperCase();
    
    //Validate input
-   if(profilePicture !== undefined && profilePicture > 5) {
-      res.end("profile picture invalid range");
-      return;
-   }
-   
    if(desc !== undefined && desc.length > 500) {
       res.end("description invalid range");
       return;
@@ -1275,11 +1269,11 @@ app.get("/api/user/getProfile", function(req, res) {
    });
 });
 
-//Client downloads profile pictures
+//Client gets list of profile pictures
 app.get("/api/user/getProfilePictures", function(req, res) {
    //Params: ?token
    //Returns "invalid params" if invalid params
-   //Returns list of profile pictures
+   //Returns list (string) of profile pictures
    
    var token = req.query.token;
 
@@ -1291,7 +1285,21 @@ app.get("/api/user/getProfilePictures", function(req, res) {
    
    isAuthValid(token, function(isValid){
       if(isValid) {
+         var picList = [];
          
+         //Populate array with list of pictures
+         fs.readdir(dir_profile_pictures, (err, files) => {
+            if(err) {
+               console.log("File I/O error: " + err);
+               console.log("\n!!<< FATAL ERROR: STOPPING THE SERVER >>!!");
+               process.exit(0);
+            }
+            files.forEach(file => {
+               picList.push(file.toString());
+           });
+           res.end(JSON.stringify(picList));
+           return;
+         })
       } else {
          checkAuth(token, function(response) {
             res.end(response);

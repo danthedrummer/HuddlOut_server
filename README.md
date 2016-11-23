@@ -166,7 +166,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/user/edit?token=123&firstName=John&lastName=Doe&profilePicture=3&age=23&description=I%20like%20programming!&privacy=PRIVATE*
 
-**RETURNS:** *"invalid params" if invalid params, "profile picture invalid range" if the profile picture value is invalid, "description invalid range" if the description value is too large, "privacy invalid value" if privacy does not match either "PUBLIC" or "PRIVATE", "success" if edit is successful*
+**RETURNS:** *"invalid params" if invalid params, "description invalid range" if the description value is too large, "privacy invalid value" if privacy does not match either "PUBLIC" or "PRIVATE", "success" if edit is successful*
 
 #### Get Profile
 
@@ -177,6 +177,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/user/getProfile?token=token123&profileId=1*
 
 **RETURNS:** *"invalid params" if invalid params, "not found" if user does not exist, profile as JSON if user found*
+
+#### Get Profile Pictures
+
+**GET:** *api/user/getProfilePictures*
+
+**PARAMS:** *token*
+
+**EXAMPLE:** *api/user/getProfilePictures?token=token123*
+
+**RETURNS:** *"invalid params" if invalid params, list (string) of profile pictures*
 
 #### Download Picture
 
