@@ -1255,22 +1255,34 @@ app.get("/api/user/getProfile", function(req, res) {
                      return;
                   }
 
-                  //Return a private profile
-                  if (thisId != profileId && rows[0].privacy == "PRIVATE") {
-                     var privateProfile = {};
-                     privateProfile.profile_id = rows[0].profile_id;
-                     privateProfile.first_name = rows[0].first_name;
-                     privateProfile.last_name = rows[0].last_name;
-                     privateProfile.privacy = rows[0].privacy;
+                  var profile = rows[0];
 
-                     res.end(JSON.stringify(privateProfile));
+                  //Look for relationship
+                  database.query("SELECT * FROM user_relationships WHERE ((profile_a='" + thisId + "' AND profile_b='" + profileId + "') OR (profile_a='" + profileId + "' AND profile_b='" + thisId + "')) AND (relationship_type='Friend' OR relationship_type='Best Friend');", function(err, rows, fields) {
+                     dbQueryCheck(err);
+
+                     //Check if the other user is this user's friend
+                     var isFriend = false;
+                     if (rows.length > 0) {
+                        isFriend = true;
+                     }
+
+                     //Return a private profile if the user is not this user's friend, this isn't the user's profile and the profile is private
+                     if (!isFriend && thisId != profileId && profile.privacy == "PRIVATE") {
+                        var privateProfile = {};
+                        privateProfile.profile_id = profile.profile_id;
+                        privateProfile.first_name = profile.first_name;
+                        privateProfile.last_name = profile.last_name;
+                        privateProfile.privacy = profile.privacy;
+
+                        res.end(JSON.stringify(privateProfile));
+                        return;
+                     }
+
+                     //Returns the public profile
+                     res.end(JSON.stringify(profile));
                      return;
-                  }
-
-
-                  //Returns the public profile
-                  res.end(JSON.stringify(rows[0]));
-                  return;
+                  });
                });
             });
          });
@@ -1394,48 +1406,48 @@ app.get("/api/user/sendFriendRequest", function(req, res) {
 
             //Get user token sub
             getTokenSub(token, function(sub) {
-               
+
                //Get profile id
                database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
                   dbQueryCheck(err);
-   
+
                   var thisId = rows[0].profile_id;
-               
+
                   //Check if user exists
                   database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
                      dbQueryCheck(err);
-                     
+
                      if (rows.length == 0) {
                         res.end("user not found");
                         return;
                      }
-                     
+
                      //Check if relationship already exists
                      database.query("SELECT * FROM user_relationships WHERE profile_a='" + profileId + "' OR profile_b='" + profileId + "';", function(err, rows, fields) {
                         dbQueryCheck(err);
-                        
-                        for(var i = 0; i < rows.length; i++) {
+
+                        for (var i = 0; i < rows.length; i++) {
 
                            //Check if a relationship already exists
-                           if((rows[i].profile_a == thisId || rows[i].profile_b == thisId) && (rows[i].profile_a == profileId || rows[i].profile_b == profileId)) {
+                           if ((rows[i].profile_a == thisId || rows[i].profile_b == thisId) && (rows[i].profile_a == profileId || rows[i].profile_b == profileId)) {
                               res.end("relationship already exists");
                               return;
                            }
                         }
-                        
+
                         //Insert friend request
                         database.query("INSERT INTO user_relationships (profile_a, profile_b, relationship_type) VALUES ('" + thisId + "', '" + profileId + "', 'Invite');", function(err, rows, fields) {
                            dbQueryCheck(err);
-                           
+
                            //Commit changes
                            database.commit(function(err) {
-                              if (err) { 
+                              if (err) {
                                  database.rollback(function() {
                                     dbQueryCheck(err);
                                  });
                               }
                            });
-                           
+
                            res.end("success");
                            return;
                         });
@@ -1474,7 +1486,7 @@ app.get("/api/user/getFriendRequests", function(req, res) {
 
          //Get user token sub
          getTokenSub(token, function(sub) {
-            
+
             //Get profile id
             database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
                dbQueryCheck(err);
@@ -1484,18 +1496,18 @@ app.get("/api/user/getFriendRequests", function(req, res) {
                //Check if relationship already exists
                database.query("SELECT * FROM user_relationships WHERE profile_b='" + thisId + "' AND relationship_type='Invite';", function(err, rows, fields) {
                   dbQueryCheck(err);
-                  
-                  if(rows.length == 0) {
+
+                  if (rows.length == 0) {
                      res.end("no requests found");
                   }
-                  
+
                   var relationships = [];
-                  
-                  for(var i = 0; i < rows.length; i++) {
+
+                  for (var i = 0; i < rows.length; i++) {
 
                      relationships.push(rows[i]);
                   }
-                  
+
                   res.end(JSON.stringify(relationships));
                   return;
                });
@@ -1548,35 +1560,36 @@ app.get("/api/user/resolveFriendRequest", function(req, res) {
                   dbQueryCheck(err);
 
                   var thisId = rows[0].profile_id;
-                  
+
                   //Check is user is having an existential crisis ;_;
-                  if(thisId == profileId) {
+                  if (thisId == profileId) {
                      res.end("cannot befriend yourself");
                      return;
                   }
-                  
+
                   //Check if user exists
                   database.query("SELECT * FROM user_relationships WHERE profile_a='" + profileId + "' AND profile_b='" + thisId + "' AND relationship_type='Invite';", function(err, rows, fields) {
                      dbQueryCheck(err);
-                     
-                     if(rows.length == 0) {
+
+                     if (rows.length == 0) {
                         res.end("invite not found");
                         return;
                      }
-                     
+
                      var relationshipId = rows[0].relationship_id;
                      var dbQuery = "";
-                     
-                     if(action == "accept") {
+
+                     if (action == "accept") {
                         dbQuery = "UPDATE user_relationships SET relationship_type='Friend' WHERE relationship_id='" + relationshipId + "';";
-                     } else {
+                     }
+                     else {
                         dbQuery = "DELETE FROM user_relationships WHERE relationship_id='" + relationshipId + "'";
                      }
-                     
+
                      //Accept/Deny invite
                      database.query(dbQuery, function(err, rows, fields) {
                         dbQueryCheck(err);
-                        
+
                         //Commit changes
                         database.commit(function(err) {
                            if (err) {
@@ -1631,33 +1644,34 @@ app.get("/api/user/viewFriends", function(req, res) {
                //Get profile id
                database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
                   dbQueryCheck(err);
-                  
+
                   var thisId = rows[0].profile_id;
-                  
+
                   //Get profile id
                   database.query("SELECT * FROM user_relationships WHERE (profile_a='" + thisId + "' OR profile_b='" + thisId + "') AND (relationship_type='Friend' OR relationship_type='Best Friend');", function(err, rows, fields) {
                      dbQueryCheck(err);
-                     
+
                      //Check if user has any friends
-                     if(rows.length == 0) {
+                     if (rows.length == 0) {
                         res.end("no friends");
                         return;
                      }
-                     
+
                      //Populate list of ids
                      var friendList = [];
-                     
-                     for(var i = 0; i < rows.length; i++) {
+
+                     for (var i = 0; i < rows.length; i++) {
                         var relationship = {};
-                        if(rows[i].profile_a == thisId) {
+                        if (rows[i].profile_a == thisId) {
                            relationship.profile = rows[i].profile_b;
-                        } else {
+                        }
+                        else {
                            relationship.profile = rows[i].profile_a;
                         }
                         relationship.relationship_type = rows[i].relationship_type;
                         friendList.push(relationship);
                      }
-                     
+
                      //Return list of ids
                      res.end(JSON.stringify(friendList));
                      return;
@@ -1684,13 +1698,13 @@ app.get("/api/user/deleteFriend", function(req, res) {
 
    var token = req.query.token; //Auth token
    var profileId = req.query.profileId //Friend profile
-   
+
    //Check if params are valid
    if (token === undefined || profileId === undefined) {
       res.end("invalid params");
       return;
    }
-   
+
    //Sanitize input
    profileId = sanitizer.sanitize(profileId);
 
@@ -1707,34 +1721,34 @@ app.get("/api/user/deleteFriend", function(req, res) {
                //Get this id
                database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
                   dbQueryCheck(err);
-                  
+
                   var thisId = rows[0].profile_id;
-                  
+
                   //Look for relationship
                   database.query("SELECT * FROM user_relationships WHERE ((profile_a='" + thisId + "' AND profile_b='" + profileId + "') OR (profile_a='" + profileId + "' AND profile_b='" + thisId + "')) AND (relationship_type='Friend' OR relationship_type='Best Friend');", function(err, rows, fields) {
                      dbQueryCheck(err);
-                     
+
                      //Check if user has any friends
-                     if(rows.length == 0) {
+                     if (rows.length == 0) {
                         res.end("friend not found");
                         return;
                      }
-                     
+
                      var relationshipId = rows[0].relationship_id;
-                     
+
                      //Delete relationship
                      database.query("DELETE FROM user_relationships WHERE relationship_id='" + relationshipId + "';", function(err, rows, fields) {
                         dbQueryCheck(err);
-                        
+
                         //Commit changes
                         database.commit(function(err) {
-                           if (err) { 
+                           if (err) {
                               database.rollback(function() {
                                  dbQueryCheck(err);
                               });
                            }
                         });
-                        
+
                         res.end("success");
                         return;
                      });
