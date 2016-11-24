@@ -317,6 +317,58 @@ app.get("/api/auth/changePassword", function(req, res) {
  * GROUP
  */
 
+//Deletes any group that has exceeded the 24 hour lifetime
+function verifyGroups() {
+   
+   console.log("Verifying groups...");
+   
+   //Begin transaction
+   database.beginTransaction(function(err) {
+      dbQueryCheck(err);
+      
+      //Find groups that exceed lifetime
+      database.query("SELECT group_id FROM groups WHERE expiry_date <= NOW();", function(err, rows, fields) {
+         dbQueryCheck(err);
+         
+         var delGroups = rows;
+         
+         for(var i = 0; i < delGroups.length; i++) {
+            console.log("Deleting group " + delGroups[i].group_id);
+            deleteGroupCron(delGroups[i].group_id);
+         }
+      });
+   });
+}
+
+//Deletes a group - should only be called by the server!!!
+function deleteGroupCron(groupId) {
+   //Begin transaction
+   database.beginTransaction(function(err) {
+      dbQueryCheck(err);
+
+      //Delete memberships
+      database.query("DELETE FROM group_memberships WHERE group_id='" + groupId + "';", function(err, rows, fields) {
+         dbQueryCheck(err);
+
+         //Delete group
+         database.query("DELETE FROM groups WHERE group_id='" + groupId + "';", function(err, rows, fields) {
+            dbQueryCheck(err);
+
+            //Commit changes
+            database.commit(function(err) {
+               if (err) {
+                  database.rollback(function() {
+                     dbQueryCheck(err);
+                  });
+               }
+            });
+
+            return;
+         });
+      });
+   });
+}
+
 //User attempts to create a new group
 app.get("/api/group/create", function(req, res) {
    //Params: ?token, ?name, ?activity
@@ -1215,12 +1267,12 @@ app.get("/api/user/edit", function(req, res) {
    });
 });
 
-//Client gets user profile record (TODO: Add friend exception)
+//Client gets user profile record
 app.get("/api/user/getProfile", function(req, res) {
    //Params: ?token, ?profileId
    //Returns "invalid params" if invalid params
    //Returns "not found" if user does not exist
-   //Returns profile as JSON if registration successful
+   //Returns profile as JSON if user profile is found
 
    var token = req.query.token;
    var profileId = req.query.profileId;
@@ -1826,6 +1878,12 @@ function initServer() {
          else {
             //Key exists in DB
             secretKey = rows[0].var_value;
+
+            setInterval(function() {
+               verifyGroups();
+            }, 2 * 60 * 1000);
+            verifyGroups();
+            console.log("Group verification job started");
             startServer();
          }
       });
