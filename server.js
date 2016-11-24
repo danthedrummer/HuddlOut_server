@@ -1603,25 +1603,20 @@ app.get("/api/user/resolveFriendRequest", function(req, res) {
    });
 });
 
-//Client gets list of friends (In progress)
-app.get("/api/user/getFriends", function(req, res) {
-   //Params: ?token, ?profileId
+//Client gets list of friends
+app.get("/api/user/viewFriends", function(req, res) {
+   //Params: ?token
    //Returns "invalid params" if invalid params
-   //Returns group id if registration successful
+   //Returns "no friends" if user has no friends
+   //Returns list of friend ids and relationshp types if user has friends
 
    var token = req.query.token; //Auth token
-   var name = req.query.name; //Name of group
-   var activity = req.query.activity; //Activity type
 
    //Check if params are valid
-   if (token === undefined || name === undefined || activity === undefined) {
+   if (token === undefined) {
       res.end("invalid params");
       return;
    }
-
-   //Sanitize input
-   name = sanitizer.sanitize(name);
-   activity = activity === null ? null : sanitizer.sanitize(activity);
 
    isAuthValid(token, function(isValid) {
       if (isValid) {
@@ -1630,41 +1625,42 @@ app.get("/api/user/getFriends", function(req, res) {
          database.beginTransaction(function(err) {
             dbQueryCheck(err);
 
-            //Insert group record
-            database.query("INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');", function(err, rows, fields) {
-               dbQueryCheck(err);
+            //Get user token sub
+            getTokenSub(token, function(sub) {
 
-               //Get user token sub
-               getTokenSub(token, function(sub) {
-
+               //Get profile id
+               database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  var thisId = rows[0].profile_id;
+                  
                   //Get profile id
-                  database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  database.query("SELECT * FROM user_relationships WHERE (profile_a='" + thisId + "' OR profile_b='" + thisId + "') AND (relationship_type='Friend' OR relationship_type='Best Friend');", function(err, rows, fields) {
                      dbQueryCheck(err);
-
-                     var profileId = rows[0].profile_id;
-
-                     //Insert user as admin of group
-                     database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + profileId + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
-                        dbQueryCheck(err);
-
-                        database.query("SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1", function(err, rows, fields) {
-                           dbQueryCheck(err);
-
-                           var groupId = rows[0].group_id;
-
-                           //Commit changes
-                           database.commit(function(err) {
-                              if (err) {
-                                 database.rollback(function() {
-                                    dbQueryCheck(err);
-                                 });
-                              }
-                           });
-
-                           res.end(groupId);
-                           return;
-                        });
-                     });
+                     
+                     //Check if user has any friends
+                     if(rows.length == 0) {
+                        res.end("no friends");
+                        return;
+                     }
+                     
+                     //Populate list of ids
+                     var friendList = [];
+                     
+                     for(var i = 0; i < rows.length; i++) {
+                        var relationship = {};
+                        if(rows[i].profile_a == thisId) {
+                           relationship.profile = rows[i].profile_b;
+                        } else {
+                           relationship.profile = rows[i].profile_a;
+                        }
+                        relationship.relationship_type = rows[i].relationship_type;
+                        friendList.push(relationship);
+                     }
+                     
+                     //Return list of ids
+                     res.end(JSON.stringify(friendList));
+                     return;
                   });
                });
             });
