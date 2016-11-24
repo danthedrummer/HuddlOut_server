@@ -237,3 +237,13 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 **EXAMPLE:** *api/user/viewFriends?token=token123*
 
 **RETURNS:** *"invalid params" if invalid params, "no friends" if user has no friends, list of friend ids and relationshp types if user has friends*
+
+#### Delete Friend
+
+**GET:** *api/user/deleteFriend*
+
+**PARAMS:** *token, profileId*
+
+**EXAMPLE:** *api/user/deleteFriend?token=token123&profileId=12*
+
+**RETURNS:** *"invalid params" if invalid params, "friend not found" if friend cannot be found, "success" if friend is deleted*

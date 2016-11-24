@@ -1675,25 +1675,24 @@ app.get("/api/user/viewFriends", function(req, res) {
    });
 });
 
-//Client deletes a friend (In progress)
+//Client deletes a friend
 app.get("/api/user/deleteFriend", function(req, res) {
    //Params: ?token, ?profileId
    //Returns "invalid params" if invalid params
-   //Returns group id if registration successful
+   //Returns "friend not found" if friend cannot be found
+   //Returns "success" if friend is deleted
 
    var token = req.query.token; //Auth token
-   var name = req.query.name; //Name of group
-   var activity = req.query.activity; //Activity type
-
+   var profileId = req.query.profileId //Friend profile
+   
    //Check if params are valid
-   if (token === undefined || name === undefined || activity === undefined) {
+   if (token === undefined || profileId === undefined) {
       res.end("invalid params");
       return;
    }
-
+   
    //Sanitize input
-   name = sanitizer.sanitize(name);
-   activity = activity === null ? null : sanitizer.sanitize(activity);
+   profileId = sanitizer.sanitize(profileId);
 
    isAuthValid(token, function(isValid) {
       if (isValid) {
@@ -1702,40 +1701,42 @@ app.get("/api/user/deleteFriend", function(req, res) {
          database.beginTransaction(function(err) {
             dbQueryCheck(err);
 
-            //Insert group record
-            database.query("INSERT INTO groups (group_name, start_date, expiry_date, activity_type) VALUES ('" + name + "', NOW(), NOW() + INTERVAL 1 DAY, '" + activity + "');", function(err, rows, fields) {
-               dbQueryCheck(err);
+            //Get user token sub
+            getTokenSub(token, function(sub) {
 
-               //Get user token sub
-               getTokenSub(token, function(sub) {
-
-                  //Get profile id
-                  database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+               //Get this id
+               database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  var thisId = rows[0].profile_id;
+                  
+                  //Look for relationship
+                  database.query("SELECT * FROM user_relationships WHERE ((profile_a='" + thisId + "' AND profile_b='" + profileId + "') OR (profile_a='" + profileId + "' AND profile_b='" + thisId + "')) AND (relationship_type='Friend' OR relationship_type='Best Friend');", function(err, rows, fields) {
                      dbQueryCheck(err);
-
-                     var profileId = rows[0].profile_id;
-
-                     //Insert user as admin of group
-                     database.query("INSERT INTO group_memberships (profile_id, group_id, group_role) VALUES ('" + profileId + "', (SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1), 'ADMIN');", function(err, rows, fields) {
+                     
+                     //Check if user has any friends
+                     if(rows.length == 0) {
+                        res.end("friend not found");
+                        return;
+                     }
+                     
+                     var relationshipId = rows[0].relationship_id;
+                     
+                     //Delete relationship
+                     database.query("DELETE FROM user_relationships WHERE relationship_id='" + relationshipId + "';", function(err, rows, fields) {
                         dbQueryCheck(err);
-
-                        database.query("SELECT group_id FROM groups WHERE group_name='" + name + "' ORDER BY group_id DESC LIMIT 1", function(err, rows, fields) {
-                           dbQueryCheck(err);
-
-                           var groupId = rows[0].group_id;
-
-                           //Commit changes
-                           database.commit(function(err) {
-                              if (err) {
-                                 database.rollback(function() {
-                                    dbQueryCheck(err);
-                                 });
-                              }
-                           });
-
-                           res.end(groupId);
-                           return;
+                        
+                        //Commit changes
+                        database.commit(function(err) {
+                           if (err) { 
+                              database.rollback(function() {
+                                 dbQueryCheck(err);
+                              });
+                           }
                         });
+                        
+                        res.end("success");
+                        return;
                      });
                   });
                });
