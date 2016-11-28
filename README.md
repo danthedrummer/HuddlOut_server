@@ -172,9 +172,11 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **GET:** *api/user/getProfile*
 
-**PARAMS:** *token, profileId*
+**PARAMS:** *token, profileId (optional)*
 
 **EXAMPLE:** *api/user/getProfile?token=token123&profileId=1*
+
+**EXAMPLE:** *api/user/getProfile?token=token123*
 
 **RETURNS:** *"invalid params" if invalid params, "not found" if user does not exist, profile as JSON if user found*
 

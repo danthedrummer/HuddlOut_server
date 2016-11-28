@@ -1267,9 +1267,9 @@ app.get("/api/user/edit", function(req, res) {
    });
 });
 
-//Client gets user profile record
+//Client gets user profile record of ID. Returns this this user's profile if profileId is not specified.
 app.get("/api/user/getProfile", function(req, res) {
-   //Params: ?token, ?profileId
+   //Params: ?token, ?profileId (optional)
    //Returns "invalid params" if invalid params
    //Returns "not found" if user does not exist
    //Returns profile as JSON if user profile is found
@@ -1278,11 +1278,11 @@ app.get("/api/user/getProfile", function(req, res) {
    var profileId = req.query.profileId;
 
    //Check if params are valid
-   if (token === undefined || profileId === undefined) {
+   if (token === undefined) {
       res.end("invalid params");
       return;
    }
-
+   
    //Sanitize profileId
    profileId = sanitizer.sanitize(profileId);
 
@@ -1297,7 +1297,12 @@ app.get("/api/user/getProfile", function(req, res) {
                dbQueryCheck(err);
 
                var thisId = rows[0].profile_id;
-
+               
+               //Set profileId to thisId if undefined
+               if(profileId === undefined) {
+                  profileId = thisId;
+               }
+               
                //Get user profile
                database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
                   dbQueryCheck(err);
@@ -1392,7 +1397,7 @@ app.get("/api/user/getProfilePictures", function(req, res) {
 
 //Client attempts to download a picture
 app.get('/api/user/downloadPicture', function(req, res) {
-   //Params: ?token, ?filename
+   //Params: ?token, ?imageName
    //Returns "invalid params" if invalid params
    //Returns an error if the file cannot be found, or a backtracking has been attempted
    //Returns a profile picture file if file is found
