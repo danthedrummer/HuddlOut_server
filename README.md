@@ -38,9 +38,9 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/auth/register?username=john%20doe&password=plain_pw*
 
-**RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, token if registration successful*
+**RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, "invalid firstname" if invalid firstname, "invalid lastname" if invalid lastname token if registration successful, token if registration successful*
 
-**NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters.*
+**NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters. FirstName must be between 1 and 20 characters. LastName must be between 1 and 20 characters.*
 
 **PRIVACY TYPES:** *PUBLIC - Account can be accessed by other users, PRIVATE - Account cannot be accessed by other users*
 

@@ -161,28 +161,32 @@ app.get("/api/auth/login", function(req, res) {
 
 //User attempts to register
 app.get("/api/auth/register", function(req, res) {
-   //Params: ?username, ?password
+   //Params: ?username, ?password, ?firstName, ?lastName
    //Returns "invalid params" if invalid params
    //Returns "occupied username" if username already taken
    //Returns "invalid username" if invalid username
    //Returns "invalid password" if password is invalid
+   //Returns "invalid firstname" if invalid firstname
+   //Returns "invalid lastname" if invalid lastname
    //Returns token if registration successful
 
    // Examples:
-   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=paulwins&password=abcdefg
-   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=glennncullen&password=1234567
-   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=aaron meaney&password=hunter2
+   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=paulwins&password=abcdefg&firstName=Paul&lastName=Reid
+   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=glennncullen&password=1234567&firstName=Glenn&lastName=Cullennn
+   // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=aaron meaney&password=hunter2&firstName=Aaron&lastName=Meaney
 
    var username = req.query.username;
    var password = req.query.password;
-
+   var firstName = req.query.firstName;
+   var lastName = req.query.lastName;
+   
    //Check if params are valid
-   if (username === undefined || password === undefined) {
+   if (username === undefined || password === undefined || firstName === undefined || lastName === undefined) {
       res.end("invalid params");
       return;
    }
 
-   //Validate username & password
+   //Validate username, password, firstName & lastName
    if (username.length < 7 || username.length > 20) {
       res.end("invalid username");
       return;
@@ -192,10 +196,22 @@ app.get("/api/auth/register", function(req, res) {
       res.end("invalid password");
       return;
    }
+   
+   if(firstName.length < 1 || firstName.length > 20) {
+      res.end("invalid firstname");
+      return;
+   }
+   
+   if(lastName.length < 1 || lastName.length > 20) {
+      res.end("invalid lastname");
+      return;
+   }
 
    //Sanitize data
    username = sanitizer.sanitize(username);
    password = sanitizer.sanitize(password);
+   firstName = sanitizer.sanitize(firstName);
+   lastName = sanitizer.sanitize(lastName);
 
    //Hash & Salt password
    password = bcrypt.hashSync(password, 8);
@@ -211,10 +227,11 @@ app.get("/api/auth/register", function(req, res) {
       else {
          database.beginTransaction(function(err) {
             dbQueryCheck(err);
-
-            database.query("INSERT INTO user_profiles(first_name) VALUES ('" + username + "');", function(err, rows, fields) {
+            
+            database.query("INSERT INTO user_profiles(first_name, last_name) VALUES ('" + firstName + "', '" + lastName + "');", function(err, rows, fields) {
                dbQueryCheck(err);
-               database.query("INSERT INTO users (username, password, profile_id) VALUES ('" + username + "','" + password + "', (SELECT profile_id FROM user_profiles WHERE first_name='" + username + "'));", function(err, rows, fields) {
+               
+               database.query("INSERT INTO users (username, password, profile_id) VALUES ('" + username + "','" + password + "', (SELECT MAX(profile_id) FROM user_profiles));", function(err, rows, fields) {
                   dbQueryCheck(err);
 
                   //Login
