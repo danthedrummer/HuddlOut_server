@@ -28,7 +28,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/auth/login?username=john%20doe&password=plain_pw*
 
-**RETURNS:** *"invalid params" = params are invalid, "invalid username" = username is invalid, "invalid password" = password is invalid, token = token authorised*
+**RETURNS:** *"invalid params" = params are invalid, "invalid username" = username is invalid, "invalid password" = password is invalid, token and profile_id if login successful*
 
 #### Register user
 
@@ -38,9 +38,9 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/auth/register?username=john%20doe&password=plain_pw*
 
-**RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, "invalid firstname" if invalid firstname, "invalid lastname" if invalid lastname token if registration successful, token if registration successful*
+**RETURNS:** *"invalid params" if invalid params, "occupied username" if username already taken, "invalid username" if invalid username, "invalid password" if password is invalid, token and profile id if registration successful*
 
-**NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters. FirstName must be between 1 and 20 characters. LastName must be between 1 and 20 characters.*
+**NOTES:** *Username must be between 7 and 20 characters. Password must be between 7 and 50 characters.*
 
 **PRIVACY TYPES:** *PUBLIC - Account can be accessed by other users, PRIVATE - Account cannot be accessed by other users*
 
@@ -204,9 +204,9 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **GET:** *api/user/sendFriendRequest*
 
-**PARAMS:** *token, profileId*
+**PARAMS:** *token, username*
 
-**EXAMPLE:** *api/user/sendFriendRequest?token=token123&profileId=6*
+**EXAMPLE:** *api/user/sendFriendRequest?token=token123&username=glennncullen*
 
 **RETURNS:** *"invalid params" if invalid params, "relationship already exists" if user_a already has a relationship with user_b, "user not found" if user_b cannot be found, "success" if friend request is successfully created*
 

@@ -17,6 +17,7 @@ var uuid = require('node-uuid'); //UUID generator for client/server authorizatio
 var secretKey = uuid.v4(); //Key used to create tokens, overwritten if already exists in DB
 var server; //The server
 var dir_profile_pictures = __dirname + "/profile_pictures/"; //Directory for profile pictures
+var deleteGroups = false; //If the server should delete groups after 24hr lifetime
 
 /*
  * API URIs
@@ -113,7 +114,7 @@ app.get("/api/auth/login", function(req, res) {
    //Returns "invalid params" if invalid params
    //Returns "invalid username" if invalid username
    //Returns "invalid password" if invalid password
-   //Returns token if login successful
+   //Returns token and profile_id if login successful
 
    var username = req.query.username;
    var password = req.query.password;
@@ -154,7 +155,10 @@ app.get("/api/auth/login", function(req, res) {
       var jwt = nJwt.create(claims, secretKey);
       jwt.setExpiration(new Date().getTime() + (60 * 60 * 1000)); //1 hour expiration
       var token = jwt.compact();
-      res.end(token);
+      
+      var returnObject = {auth:token, id:rows[0].profile_id};
+      
+      res.end(JSON.stringify(returnObject));
       return;
    });
 });
@@ -168,7 +172,7 @@ app.get("/api/auth/register", function(req, res) {
    //Returns "invalid password" if password is invalid
    //Returns "invalid firstname" if invalid firstname
    //Returns "invalid lastname" if invalid lastname
-   //Returns token if registration successful
+   //Returns token and profile id if registration successful
 
    // Examples:
    // https://huddlout-server-reccy.c9users.io:8081/api/auth/register?username=paulwins&password=abcdefg&firstName=Paul&lastName=Reid
@@ -237,6 +241,9 @@ app.get("/api/auth/register", function(req, res) {
                   //Login
                   database.query("SELECT * FROM users WHERE username='" + username + "';", function(err, rows, fields) {
                      dbQueryCheck(err);
+                     
+                     //Get profile id
+                     var profileId = rows[0].profile_id;
 
                      //Create a token and return it
                      var claims = {
@@ -256,8 +263,10 @@ app.get("/api/auth/register", function(req, res) {
                            });
                         }
                      });
-
-                     res.end(token);
+                     
+                     var returnObject = {auth:token, id:profileId};
+                     
+                     res.end(JSON.stringify(returnObject));
                      return;
                   });
                });
@@ -1453,23 +1462,23 @@ app.get('/api/user/downloadPicture', function(req, res) {
 
 //User sends a friend request
 app.get("/api/user/sendFriendRequest", function(req, res) {
-   //Params: ?token, ?profileId
+   //Params: ?token, ?username
    //Returns "invalid params" if invalid params
    //Returns "relationship already exists" if user_a already has a relationship with user_b
    //Returns "user not found" if user_b cannot be found
    //Returns "success" if friend request is successfully created
-
+   
    var token = req.query.token; //Auth token
-   var profileId = req.query.profileId; //Name of friend
+   var username = req.query.username; //Name of friend
 
    //Check if params are valid
-   if (token === undefined || profileId === undefined) {
+   if (token === undefined || username === undefined) {
       res.end("invalid params");
       return;
    }
 
-   //Sanitize input
-   profileId = sanitizer.sanitize(profileId);
+   //username input
+   username = sanitizer.sanitize(username);
 
    isAuthValid(token, function(isValid) {
       if (isValid) {
@@ -1481,49 +1490,56 @@ app.get("/api/user/sendFriendRequest", function(req, res) {
             //Get user token sub
             getTokenSub(token, function(sub) {
 
-               //Get profile id
+               //Get this profile id
                database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
                   dbQueryCheck(err);
 
                   var thisId = rows[0].profile_id;
-
-                  //Check if user exists
-                  database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
+                  
+                  //Get other profile id
+                  database.query("SELECT profile_id FROM users WHERE username='" + username + "';", function(err, rows, fields) {
                      dbQueryCheck(err);
-
-                     if (rows.length == 0) {
-                        res.end("user not found");
-                        return;
-                     }
-
-                     //Check if relationship already exists
-                     database.query("SELECT * FROM user_relationships WHERE profile_a='" + profileId + "' OR profile_b='" + profileId + "';", function(err, rows, fields) {
+                     
+                     var profileId = rows[0].profile_id;
+                     
+                     //Check if other user exists
+                     database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
                         dbQueryCheck(err);
-
-                        for (var i = 0; i < rows.length; i++) {
-
-                           //Check if a relationship already exists
-                           if ((rows[i].profile_a == thisId || rows[i].profile_b == thisId) && (rows[i].profile_a == profileId || rows[i].profile_b == profileId)) {
-                              res.end("relationship already exists");
-                              return;
-                           }
-                        }
-
-                        //Insert friend request
-                        database.query("INSERT INTO user_relationships (profile_a, profile_b, relationship_type) VALUES ('" + thisId + "', '" + profileId + "', 'Invite');", function(err, rows, fields) {
-                           dbQueryCheck(err);
-
-                           //Commit changes
-                           database.commit(function(err) {
-                              if (err) {
-                                 database.rollback(function() {
-                                    dbQueryCheck(err);
-                                 });
-                              }
-                           });
-
-                           res.end("success");
+   
+                        if (rows.length == 0) {
+                           res.end("user not found");
                            return;
+                        }
+   
+                        //Check if relationship already exists
+                        database.query("SELECT * FROM user_relationships WHERE profile_a='" + profileId + "' OR profile_b='" + profileId + "';", function(err, rows, fields) {
+                           dbQueryCheck(err);
+   
+                           for (var i = 0; i < rows.length; i++) {
+   
+                              //Check if a relationship already exists
+                              if ((rows[i].profile_a == thisId || rows[i].profile_b == thisId) && (rows[i].profile_a == profileId || rows[i].profile_b == profileId)) {
+                                 res.end("relationship already exists");
+                                 return;
+                              }
+                           }
+   
+                           //Insert friend request
+                           database.query("INSERT INTO user_relationships (profile_a, profile_b, relationship_type) VALUES ('" + thisId + "', '" + profileId + "', 'Invite');", function(err, rows, fields) {
+                              dbQueryCheck(err);
+   
+                              //Commit changes
+                              database.commit(function(err) {
+                                 if (err) {
+                                    database.rollback(function() {
+                                       dbQueryCheck(err);
+                                    });
+                                 }
+                              });
+   
+                              res.end("success");
+                              return;
+                           });
                         });
                      });
                   });
@@ -1900,12 +1916,17 @@ function initServer() {
          else {
             //Key exists in DB
             secretKey = rows[0].var_value;
-
-            setInterval(function() {
+            
+            if(deleteGroups) {
+               setInterval(function() {
+                  verifyGroups();
+               }, 2 * 60 * 1000);
                verifyGroups();
-            }, 2 * 60 * 1000);
-            verifyGroups();
-            console.log("Group verification job started");
+               console.log("Group verification job started");
+            } else {
+               console.log("Group verification job disabled");
+            }
+            
             startServer();
          }
       });
