@@ -1188,7 +1188,7 @@ app.get("/api/group/checkKicks", function(req, res) {
 
 //User attempts to create a vote in a group
 app.get("/api/group/createVote", function(req, res) {
-   //Params: ?token, ?groupId, name, desc, duration, option1, option2, option3, option4
+   //Params: ?token, ?groupId, ?name, ?desc, ?duration, ?option1, ?option2, ?option3, ?option4
    //Returns "invalid params" if invalid params
    //Returns "no groups" if user is not member of the group
    //Returns "success" if vote is created successfully
@@ -1314,44 +1314,91 @@ app.get("/api/group/createVote", function(req, res) {
    });
 });
 
-//User attempts to get a list of votes in a group (In progress)
+//User attempts to get a list of votes and counts in a group
 app.get("/api/group/getVotes", function(req, res) {
-   //Params: ?token
+   //Params: ?token, ?groupId
    //Returns "invalid params" if invalid params
-   //Returns "no groups" if user is not member of a group
+   //Returns "no groups" if user is not member of the group
+   //Returns "no votes" if no votes were made
    //Returns list of ids of groups if successful
 
    var token = req.query.token;
+   var groupId = req.query.groupId;
 
    //Check if params are valid
-   if (token === undefined) {
+   if (token === undefined || groupId === undefined) {
       res.end("invalid params");
       return;
    }
 
    isAuthValid(token, function(isValid) {
       if (isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err) {
+            dbQueryCheck(err);
+            
+            //Get user token sub
+            getTokenSub(token, function(sub) {
+      
+               //Check if user is in group
+               database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_id='" + groupId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
 
-         //Get user token sub
-         getTokenSub(token, function(sub) {
+                  if (rows.length == 0) {
+                     res.end("no groups");
+                     return;
+                  }
+                  
+                  //Get votes
+                  database.query("SELECT * FROM vote WHERE group_id='" + groupId + "';", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     if(rows.length == 0) {
+                        res.end("no votes");
+                        return;
+                     }
+                     
+                     var votes = rows;
+                     
+                     //Get votes
+                     database.query("SELECT * FROM vote_option;", function(err, rows, fields) {
+                        dbQueryCheck(err);
+                        
+                        for(var i = 0; i < votes.length; i++) {
+                           votes[i].options = [];
+                           
+                           for(var j = 0; j < rows.length; j++) {
+                              if(votes[i].vote_id == rows[j].vote_id) {
+                                 var optionJSON = {};
+                                 optionJSON.option_id = rows[j].option_id;
+                                 optionJSON.name = rows[j].name;
+                                 optionJSON.count = 0;
+                                 votes[i].options.push(optionJSON);
+                              }
+                           }
+                        }
 
-            //Check if user is in group
-            database.query("SELECT group_id FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
-               dbQueryCheck(err);
-
-               var groups = [];
-
-               if (rows.length == 0) {
-                  res.end("not member");
-                  return;
-               }
-
-               for (var i = 0; i < rows.length; i++) {
-                  groups.push(rows[i].group_id);
-               }
-
-               res.end(JSON.stringify(groups));
-               return;
+                        //Get vote count (TODO: Validate that this works!)
+                        database.query("SELECT * FROM ballot;", function(err, rows, fields) {
+                           dbQueryCheck(err);
+                           
+                           for(var i = 0; i < votes.length; i++) {
+                              for(var j = 0; j < rows.length; j++) {
+                                 for(var k = 0; k < votes[i].options.length; k++) {
+                                    if(votes[i].options[k].option_id == rows[i].option_id) {
+                                       votes[i].options[k].count++;
+                                    }
+                                 }
+                              }
+                           }
+                           
+                           res.end(JSON.stringify(votes));
+                           return;
+                        });
+                     });
+                  });
+               });
             });
          });
       }

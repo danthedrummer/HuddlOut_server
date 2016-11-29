@@ -135,6 +135,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of the group, "success" if vote is created successfully*
 
+#### Get Votes
+
+**GET:** *api/group/getVotes*
+
+**PARAMS:** *token, groupId*
+
+**EXAMPLE:** *api/group/getVotes?token=token123&groupId=7*
+
+**RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of the group, "no votes" if no votes were made, list of ids of groups if successful*
+
 #### Check Kicks
 
 **GET:** *api/group/checkKicks*
