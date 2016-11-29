@@ -1186,6 +1186,156 @@ app.get("/api/group/checkKicks", function(req, res) {
    });
 });
 
+//User attempts to create a vote in a group (In progress)
+app.get("/api/group/createVote", function(req, res) {
+   //Params: ?token
+   //Returns "invalid params" if invalid params
+   //Returns "no groups" if user is not member of a group
+   //Returns list of ids of groups if successful
+
+   var token = req.query.token;
+
+   //Check if params are valid
+   if (token === undefined) {
+      res.end("invalid params");
+      return;
+   }
+
+   isAuthValid(token, function(isValid) {
+      if (isValid) {
+
+         //Get user token sub
+         getTokenSub(token, function(sub) {
+
+            //Check if user is in group
+            database.query("SELECT group_id FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
+               dbQueryCheck(err);
+
+               var groups = [];
+
+               if (rows.length == 0) {
+                  res.end("not member");
+                  return;
+               }
+
+               for (var i = 0; i < rows.length; i++) {
+                  groups.push(rows[i].group_id);
+               }
+
+               res.end(JSON.stringify(groups));
+               return;
+            });
+         });
+      }
+      else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to get a list of votes in a group (In progress)
+app.get("/api/group/getVotes", function(req, res) {
+   //Params: ?token
+   //Returns "invalid params" if invalid params
+   //Returns "no groups" if user is not member of a group
+   //Returns list of ids of groups if successful
+
+   var token = req.query.token;
+
+   //Check if params are valid
+   if (token === undefined) {
+      res.end("invalid params");
+      return;
+   }
+
+   isAuthValid(token, function(isValid) {
+      if (isValid) {
+
+         //Get user token sub
+         getTokenSub(token, function(sub) {
+
+            //Check if user is in group
+            database.query("SELECT group_id FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
+               dbQueryCheck(err);
+
+               var groups = [];
+
+               if (rows.length == 0) {
+                  res.end("not member");
+                  return;
+               }
+
+               for (var i = 0; i < rows.length; i++) {
+                  groups.push(rows[i].group_id);
+               }
+
+               res.end(JSON.stringify(groups));
+               return;
+            });
+         });
+      }
+      else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
+//User attempts to select a candidate in a vote (In progress)
+app.get("/api/group/submitVote", function(req, res) {
+   //Params: ?token
+   //Returns "invalid params" if invalid params
+   //Returns "no groups" if user is not member of a group
+   //Returns list of ids of groups if successful
+
+   var token = req.query.token;
+
+   //Check if params are valid
+   if (token === undefined) {
+      res.end("invalid params");
+      return;
+   }
+
+   isAuthValid(token, function(isValid) {
+      if (isValid) {
+
+         //Get user token sub
+         getTokenSub(token, function(sub) {
+
+            //Check if user is in group
+            database.query("SELECT group_id FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
+               dbQueryCheck(err);
+
+               var groups = [];
+
+               if (rows.length == 0) {
+                  res.end("not member");
+                  return;
+               }
+
+               for (var i = 0; i < rows.length; i++) {
+                  groups.push(rows[i].group_id);
+               }
+
+               res.end(JSON.stringify(groups));
+               return;
+            });
+         });
+      }
+      else {
+         checkAuth(token, function(response) {
+            res.end(response);
+            return;
+         });
+      }
+   });
+});
+
 /*
  * USERS
  */
@@ -1711,7 +1861,7 @@ app.get("/api/user/viewFriends", function(req, res) {
    //Params: ?token
    //Returns "invalid params" if invalid params
    //Returns "no friends" if user has no friends
-   //Returns list of friend ids and relationshp types if user has friends
+   //Returns list of friends with limited information if user has friends
 
    var token = req.query.token; //Auth token
 
@@ -1746,10 +1896,10 @@ app.get("/api/user/viewFriends", function(req, res) {
                         res.end("no friends");
                         return;
                      }
-
+                     
                      //Populate list of ids
                      var friendList = [];
-
+                     
                      for (var i = 0; i < rows.length; i++) {
                         var relationship = {};
                         if (rows[i].profile_a == thisId) {
@@ -1761,10 +1911,25 @@ app.get("/api/user/viewFriends", function(req, res) {
                         relationship.relationship_type = rows[i].relationship_type;
                         friendList.push(relationship);
                      }
-
-                     //Return list of ids
-                     res.end(JSON.stringify(friendList));
-                     return;
+                     
+                     //Get friend's list
+                     database.query("SELECT * FROM user_profiles;", function(err, rows, fields) {
+                        dbQueryCheck(err);
+                        
+                        for(var i = 0; i < rows.length; i++) {
+                           for(var j = 0; j < friendList.length; j++) {
+                              if(friendList[j].profile == rows[i].profile_id) {
+                                 friendList[j].first_name = rows[i].first_name;
+                                 friendList[j].last_name = rows[i].last_name;
+                                 friendList[j].profile_picture = rows[i].profile_picture;
+                              }
+                           }
+                        }
+                        
+                        //Return list of ids
+                        res.end(JSON.stringify(friendList));
+                        return;
+                     });
                   });
                });
             });
@@ -1917,6 +2082,7 @@ function initServer() {
             //Key exists in DB
             secretKey = rows[0].var_value;
             
+            //Delete expired groups
             if(deleteGroups) {
                setInterval(function() {
                   verifyGroups();
@@ -1926,7 +2092,6 @@ function initServer() {
             } else {
                console.log("Group verification job disabled");
             }
-            
             startServer();
          }
       });

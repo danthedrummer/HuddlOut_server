@@ -238,7 +238,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/user/viewFriends?token=token123*
 
-**RETURNS:** *"invalid params" if invalid params, "no friends" if user has no friends, list of friend ids and relationshp types if user has friends*
+**RETURNS:** *"invalid params" if invalid params, "no friends" if user has no friends, list of friends with limited information if user has friends*
 
 #### Delete Friend
 
