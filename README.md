@@ -125,6 +125,16 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **RETURNS:** *"invalid params" if invalid params, "membership not found" if user is not member of the group, "invalid role" if user is not an admin or moderator, "dont kick yourself" if user tried to kick themself, "user not found" if user is not in the group, "already kicked" if user was already kicked, "success" if kick is successful*
 
+#### Create Vote
+
+**GET:** *api/group/createVote*
+
+**PARAMS:** *token*
+
+**EXAMPLE:** *api/group/createVote?token=token123&groupId=7&name=Bowling+Venue&desc=Where+are+we+going+bowling%3F&option1=Bowl+Balls&option2=Bowling+Dreams&option3=Guttered+Lanes&option4=Slippery+Lane*
+
+**RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of the group, "success" if vote is created successfully*
+
 #### Check Kicks
 
 **GET:** *api/group/checkKicks*

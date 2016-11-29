@@ -453,7 +453,7 @@ app.get("/api/group/create", function(req, res) {
                               }
                            });
 
-                           res.end(groupId);
+                           res.end(groupId.toString());
                            return;
                         });
                      });
@@ -1186,44 +1186,122 @@ app.get("/api/group/checkKicks", function(req, res) {
    });
 });
 
-//User attempts to create a vote in a group (In progress)
+//User attempts to create a vote in a group
 app.get("/api/group/createVote", function(req, res) {
-   //Params: ?token
+   //Params: ?token, ?groupId, name, desc, duration, option1, option2, option3, option4
    //Returns "invalid params" if invalid params
-   //Returns "no groups" if user is not member of a group
-   //Returns list of ids of groups if successful
+   //Returns "no groups" if user is not member of the group
+   //Returns "success" if vote is created successfully
 
    var token = req.query.token;
+   var groupId = req.query.groupId;
+   var name = req.query.name;
+   var desc = req.query.desc;
+   var duration = req.query.duration;
+   var option1 = req.query.option1;
+   var option2 = req.query.option2;
+   var option3 = req.query.option3;
+   var option4 = req.query.option4;
 
    //Check if params are valid
-   if (token === undefined) {
+   if (token === undefined || groupId === undefined || name === undefined || desc === undefined || duration === undefined || option1 === undefined || option2 === undefined) {
       res.end("invalid params");
       return;
    }
-
+   
+   //Sanitize inputs
+   var groupId = sanitizer.sanitize(groupId);
+   var name = sanitizer.sanitize(name);
+   var desc = sanitizer.sanitize(desc);
+   var duration = sanitizer.sanitize(duration);
+   var option1 = sanitizer.sanitize(option1);
+   var option2 = sanitizer.sanitize(option2);
+   var option3 = option3 === undefined ? null : sanitizer.sanitize(option3);
+   var option4 = option4 === undefined ? null : sanitizer.sanitize(option4);
+   
    isAuthValid(token, function(isValid) {
       if (isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err) {
+            dbQueryCheck(err);
+            
+            //Get user token sub
+            getTokenSub(token, function(sub) {
+      
+               //Check if user is in group
+               database.query("SELECT * FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "') AND group_id='" + groupId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
 
-         //Get user token sub
-         getTokenSub(token, function(sub) {
+                  if (rows.length == 0) {
+                     res.end("no groups");
+                     return;
+                  }
+                  
+                  //Create vote 
+                  database.query("INSERT INTO vote (group_id, name, description, expiry_date, creation_date) VALUES ('" + groupId + "','" + name + "','" + desc + "', NOW() + INTERVAL " + duration + " MINUTE, NOW());", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     //Create option 1
+                     database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option1 + "');", function(err, rows, fields) {
+                        dbQueryCheck(err);
+                        
+                        //Create option 2
+                        database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option2 + "');", function(err, rows, fields) {
+                           dbQueryCheck(err);
+                           
+                           if(option3 === null) {
+                              //Commit changes
+                              database.commit(function(err) {
+                                 if (err) {
+                                    database.rollback(function() {
+                                       dbQueryCheck(err);
+                                    });
+                                 }
+                              });
+                              
+                              res.end("success");
+                              return;
+                           }
+                           
+                           //Create option 3
+                           database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option3 + "');", function(err, rows, fields) {
+                              dbQueryCheck(err);
+                              
+                              if(option4 === null) {
+                                 //Commit changes
+                                 database.commit(function(err) {
+                                    if (err) {
+                                       database.rollback(function() {
+                                          dbQueryCheck(err);
+                                       });
+                                    }
+                                 });
+                                 
+                                 res.end("success");
+                                 return;
+                              }
+                              
+                              //Create option 4
+                              database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option4 + "');", function(err, rows, fields) {
+                                 dbQueryCheck(err);
 
-            //Check if user is in group
-            database.query("SELECT group_id FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
-               dbQueryCheck(err);
-
-               var groups = [];
-
-               if (rows.length == 0) {
-                  res.end("not member");
-                  return;
-               }
-
-               for (var i = 0; i < rows.length; i++) {
-                  groups.push(rows[i].group_id);
-               }
-
-               res.end(JSON.stringify(groups));
-               return;
+                                 database.commit(function(err) {
+                                    if (err) {
+                                       database.rollback(function() {
+                                          dbQueryCheck(err);
+                                       });
+                                    }
+                                 });
+                                 
+                                 res.end("success");
+                                 return;
+                              });
+                           });
+                        });
+                     });
+                  });
+               });
             });
          });
       }
