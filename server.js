@@ -110,6 +110,8 @@ app.get("/api/auth/checkAuth", function(req, res) {
 
 //User attempts to login
 app.get("/api/auth/login", function(req, res) {
+   
+   //https://huddlout-server-reccy.c9users.io:8081/api/auth/login?username=glennncullen&password=1234567
    //Params: ?username, ?password
    //Returns "invalid params" if invalid params
    //Returns "invalid username" if invalid username
@@ -689,7 +691,7 @@ app.get("/api/group/getGroups", function(req, res) {
    //Params: ?token
    //Returns "invalid params" if invalid params
    //Returns "no groups" if user is not member of a group
-   //Returns list of ids of groups if successful
+   //Returns JSON of groups if successful
 
    var token = req.query.token;
 
@@ -715,13 +717,29 @@ app.get("/api/group/getGroups", function(req, res) {
                   res.end("not member");
                   return;
                }
-
+               
                for (var i = 0; i < rows.length; i++) {
-                  groups.push(rows[i].group_id);
+                  var group = {}
+                  group.group_id = rows[i].group_id;
+                  groups.push(group);
                }
-
-               res.end(JSON.stringify(groups));
-               return;
+               
+               //Iterate through groups
+               database.query("SELECT * FROM groups;", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  for(var i = 0; i < rows.length; i++) {
+                     for(var j = 0; j < groups.length; j++) {
+                        if(rows[i].group_id == groups[j].group_id) {
+                           groups[j].group_name = rows[i].group_name;
+                           groups[j].activity = rows[i].activity_type;
+                        }
+                     }
+                  }
+                  
+                  res.end(JSON.stringify(groups));
+                  return;
+               });
             });
          });
       }
@@ -1320,7 +1338,7 @@ app.get("/api/group/getVotes", function(req, res) {
    //Returns "invalid params" if invalid params
    //Returns "no groups" if user is not member of the group
    //Returns "no votes" if no votes were made
-   //Returns list of ids of groups if successful
+   //Returns JSON of votes if successful
 
    var token = req.query.token;
    var groupId = req.query.groupId;
@@ -1379,14 +1397,14 @@ app.get("/api/group/getVotes", function(req, res) {
                            }
                         }
 
-                        //Get vote count (TODO: Validate that this works!)
+                        //Get vote count
                         database.query("SELECT * FROM ballot;", function(err, rows, fields) {
                            dbQueryCheck(err);
                            
                            for(var i = 0; i < votes.length; i++) {
                               for(var j = 0; j < rows.length; j++) {
                                  for(var k = 0; k < votes[i].options.length; k++) {
-                                    if(votes[i].options[k].option_id == rows[i].option_id) {
+                                    if(votes[i].options[k].option_id == rows[j].option_id) {
                                        votes[i].options[k].count++;
                                     }
                                  }
@@ -1411,44 +1429,142 @@ app.get("/api/group/getVotes", function(req, res) {
    });
 });
 
-//User attempts to select a candidate in a vote (In progress)
+//User attempts to select a candidate in a vote
 app.get("/api/group/submitVote", function(req, res) {
-   //Params: ?token
+   //Params: ?token, ?optionId
    //Returns "invalid params" if invalid params
-   //Returns "no groups" if user is not member of a group
-   //Returns list of ids of groups if successful
+   //Returns "invalid vote option" if option was not found
+   //Returns "vote expired" if the vote has expired
+   //Returns "no groups" if the user does not belong to the correct group
+   //Returns "update success" if vote re-submission is successful
+   //Returns "vote success" if new vote submission is successful
 
    var token = req.query.token;
-
+   var optionId = req.query.optionId;
+   
    //Check if params are valid
-   if (token === undefined) {
+   if (token === undefined || optionId === undefined) {
       res.end("invalid params");
       return;
    }
+   
+   var optionId = sanitizer.sanitize(optionId);
 
    isAuthValid(token, function(isValid) {
       if (isValid) {
+         
+         //Begin transaction
+         database.beginTransaction(function(err) {
+            dbQueryCheck(err);
+         
+            //Get user token sub
+            getTokenSub(token, function(sub) {
+               
+               //Get option vote
+               database.query("SELECT vote_id FROM vote_option WHERE option_id='" + optionId + "';", function(err, rows, fields) {
+                  dbQueryCheck(err);
+                  
+                  //Check if the vote option exists
+                  if(rows.length == 0) {
+                     res.end("invalid vote option");
+                     return;
+                  }
+                  
+                  var voteId = rows[0].vote_id;
+                  
+                  //Get user profile id
+                  database.query("SELECT profile_id FROM users WHERE id='" + sub + "';", function(err, rows, fields) {
+                     dbQueryCheck(err);
 
-         //Get user token sub
-         getTokenSub(token, function(sub) {
-
-            //Check if user is in group
-            database.query("SELECT group_id FROM group_memberships WHERE profile_id=(SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
-               dbQueryCheck(err);
-
-               var groups = [];
-
-               if (rows.length == 0) {
-                  res.end("not member");
-                  return;
-               }
-
-               for (var i = 0; i < rows.length; i++) {
-                  groups.push(rows[i].group_id);
-               }
-
-               res.end(JSON.stringify(groups));
-               return;
+                     var thisProfileId = rows[0].profile_id;
+                     
+                     //Check group membership
+                     database.query("SELECT * FROM group_memberships WHERE profile_id='" + thisProfileId + "' AND group_id=(SELECT group_id FROM vote WHERE vote_id='" + voteId + "');", function(err, rows, fields) {
+                        dbQueryCheck(err);
+                        
+                        //Check if the user belongs to the group holding the vote
+                        if(rows.length == 0) {
+                           res.end("no groups");
+                           return;
+                        }
+                        
+                        var groupId = rows[0].group_id;
+                        
+                        //Check if vote is still open
+                        database.query("SELECT expiry_date FROM vote WHERE vote_id='" + voteId + "' AND expiry_date > NOW();", function(err, rows, fields) {
+                           dbQueryCheck(err);
+                           
+                           if(rows.length == 0) {
+                              res.end("vote expired");
+                              return;
+                           }
+                           
+                           //Get vote options related to the voteId
+                           database.query("SELECT option_id FROM vote_option WHERE vote_id='" + voteId + "';", function(err, rows, fields) {
+                              dbQueryCheck(err);
+                              
+                              var voteOptions = [];
+                              
+                              for(var i = 0; i < rows.length; i++) {
+                                 voteOptions.push(rows[i].option_id);
+                              }
+                              
+                              //Check if the user already voted on this vote
+                              database.query("SELECT * FROM ballot;", function(err, rows, fields) {
+                                 dbQueryCheck(err);
+                                 
+                                 var alreadyVoted = false;
+                                 var ballotId = null;
+   
+                                 for(var i = 0; i < rows.length && !alreadyVoted; i++) {
+                                    for(var j = 0; j < voteOptions.length && !alreadyVoted; j++) {
+                                       if(voteOptions[j] == rows[i].option_id) {
+                                          alreadyVoted = true;
+                                          ballotId = rows[i].ballot_id;
+                                       }
+                                    }
+                                 }
+                                 
+                                 //If user already voted, update the vote. Otherwise, create a new vote
+                                 if(alreadyVoted) {
+                                    //Update ballot entry
+                                    database.query("UPDATE ballot SET option_id='" + optionId + "' WHERE ballot_id='" + ballotId + "';", function(err, rows, fields) {
+                                       dbQueryCheck(err);
+                                       
+                                       database.commit(function(err) {
+                                          if (err) {
+                                             database.rollback(function() {
+                                                dbQueryCheck(err);
+                                             });
+                                          }
+                                       });
+                                       
+                                       res.end("update success");
+                                       return;
+                                    });
+                                 } else {
+                                    //Create new ballot entry
+                                    database.query("INSERT INTO ballot(profile_id, option_id) VALUES('" + thisProfileId + "','" + optionId + "');", function(err, rows, fields) {
+                                       dbQueryCheck(err);
+                                       
+                                       database.commit(function(err) {
+                                          if (err) {
+                                             database.rollback(function() {
+                                                dbQueryCheck(err);
+                                             });
+                                          }
+                                       });
+                                       
+                                       res.end("vote success");
+                                       return;
+                                    });
+                                 }
+                              });
+                           });
+                        });
+                     });
+                  });
+               });
             });
          });
       }
@@ -2046,6 +2162,7 @@ app.get("/api/user/viewFriends", function(req, res) {
                               if(friendList[j].profile == rows[i].profile_id) {
                                  friendList[j].first_name = rows[i].first_name;
                                  friendList[j].last_name = rows[i].last_name;
+                                 friendList[j].desc = rows[i].description;
                                  friendList[j].profile_picture = rows[i].profile_picture;
                               }
                            }

@@ -129,7 +129,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **GET:** *api/group/createVote*
 
-**PARAMS:** *token*
+**PARAMS:** *token, groupId, name, desc, duration, option1, option2, option3, option4*
 
 **EXAMPLE:** *api/group/createVote?token=token123&groupId=7&name=Bowling+Venue&desc=Where+are+we+going+bowling%3F&option1=Bowl+Balls&option2=Bowling+Dreams&option3=Guttered+Lanes&option4=Slippery+Lane*
 
@@ -143,7 +143,17 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/group/getVotes?token=token123&groupId=7*
 
-**RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of the group, "no votes" if no votes were made, list of ids of groups if successful*
+**RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of the group, "no votes" if no votes were made, JSON of votes if successful*
+
+#### Submit Vote
+
+**GET:** *api/group/submitVote*
+
+**PARAMS:** *token, optionId*
+
+**EXAMPLE:** *api/group/getVotes?token=token123&optionId=7*
+
+**RETURNS:** *"invalid params" if invalid params, "invalid vote option" if option was not found, "vote expired" if the vote has expired, "no groups" if the user does not belong to the correct group, "update success" if vote re-submission is successful, "vote success" if new vote submission is successful*
 
 #### Check Kicks
 
@@ -175,7 +185,7 @@ Collaborators: @reccy, @danthedrummer, @glennncullen, @14552067
 
 **EXAMPLE:** *api/group/getGroups?token=token123*
 
-**RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of a group, list of ids of groups if successful*
+**RETURNS:** *"invalid params" if invalid params, "no groups" if user is not member of a group, JSON of groups if successful*
 
 ### Users
 #### Edit Profile
