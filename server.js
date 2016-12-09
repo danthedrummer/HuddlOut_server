@@ -891,28 +891,19 @@ app.get("/api/group/checkInvites", function(req, res) {
                   var profileId = rows[0].profile_id;
 
                   //Get invites
-                  database.query("SELECT * FROM group_memberships WHERE profile_id='" + profileId + "' AND group_role='INVITED';", function(err, rows, fields) {
+                  database.query("SELECT group_memberships.*, groups.group_name, groups.activity_type FROM group_memberships INNER JOIN groups ON group_memberships.group_id = groups.group_id WHERE profile_id='" + profileId + "' AND group_role='INVITED';", function(err, rows, fields) {
                      dbQueryCheck(err);
 
                      if (rows.length == 0) {
                         res.end("no invites");
                         return;
                      }
-
+                     
                      var invites = [];
 
                      for (var i = 0; i < rows.length; i++) {
-                        invites.push(rows[i].group_id);
+                        invites.push(rows[i]);
                      }
-
-                     //Commit changes
-                     database.commit(function(err) {
-                        if (err) {
-                           database.rollback(function() {
-                              dbQueryCheck(err);
-                           });
-                        }
-                     });
 
                      res.end(JSON.stringify(invites));
                      return;
@@ -1953,9 +1944,9 @@ app.get("/api/user/getFriendRequests", function(req, res) {
    //Returns "invalid params" if invalid params
    //Returns "no requests found" if there are no friend requests
    //Returns list of friend requests
-
+   
    var token = req.query.token; //Auth token
-
+   
    //Check if params are valid
    if (token === undefined) {
       res.end("invalid params");
@@ -1977,20 +1968,40 @@ app.get("/api/user/getFriendRequests", function(req, res) {
                //Check if relationship already exists
                database.query("SELECT * FROM user_relationships WHERE profile_b='" + thisId + "' AND relationship_type='Invite';", function(err, rows, fields) {
                   dbQueryCheck(err);
-
+                  
+                  //Check if there are any requests
                   if (rows.length == 0) {
                      res.end("no requests found");
                   }
-
+                  
+                  //Populate relationship ids
                   var relationships = [];
 
                   for (var i = 0; i < rows.length; i++) {
-
                      relationships.push(rows[i]);
                   }
-
-                  res.end(JSON.stringify(relationships));
-                  return;
+                  
+                  //Get friend's list
+                  database.query("SELECT * FROM user_profiles;", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     for(var i = 0; i < rows.length; i++) {
+                        for(var j = 0; j < relationships.length; j++) {
+                           if(relationships[j].profile_a == rows[i].profile_id) {
+                              relationships[j].first_name = rows[i].first_name;
+                              relationships[j].last_name = rows[i].last_name;
+                              relationships[j].profile_picture = rows[i].profile_picture;
+                              relationships[j].age = rows[i].age;
+                              relationships[j].description = rows[i].description;
+                              relationships[j].privacy = rows[i].privacy;
+                           }
+                        }
+                     }
+                     
+                     //Return list of ids
+                     res.end(JSON.stringify(relationships));
+                     return;
+                  });
                });
             });
          });
@@ -2194,7 +2205,7 @@ app.get("/api/user/deleteFriend", function(req, res) {
    //Returns "success" if friend is deleted
 
    var token = req.query.token; //Auth token
-   var profileId = req.query.profileId //Friend profile
+   var profileId = req.query.profileId; //Friend profile
 
    //Check if params are valid
    if (token === undefined || profileId === undefined) {
