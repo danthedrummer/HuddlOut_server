@@ -4,8 +4,6 @@ var app = express(); //Express app
 var fs = require("fs"); //File system for I/O
 var bcrypt = require("bcryptjs"); //BCrypt hashing & salting algorithm
 var sanitizer = require("sanitizer"); //Sanitizer for input
-var sqlinjection = require("sql-injection"); //SQL injection prevention
-app.use(sqlinjection); //Apply SQL injection prevention to the express server
 var mysql = require("mysql"); //MySQL connection dependencies
 var database = mysql.createConnection({
    host: 'localhost',
@@ -1201,7 +1199,7 @@ app.get("/api/group/createVote", function(req, res) {
    //Returns "invalid params" if invalid params
    //Returns "no groups" if user is not member of the group
    //Returns "success" if vote is created successfully
-
+   
    var token = req.query.token;
    var groupId = req.query.groupId;
    var name = req.query.name;
@@ -1248,15 +1246,15 @@ app.get("/api/group/createVote", function(req, res) {
                   }
                   
                   //Create vote 
-                  database.query("INSERT INTO vote (group_id, name, description, expiry_date, creation_date) VALUES ('" + groupId + "','" + name + "','" + desc + "', NOW() + INTERVAL " + duration + " MINUTE, NOW());", function(err, rows, fields) {
+                  database.query("INSERT INTO vote (group_id, name, description, expiry_date, creation_date) VALUES ('" + groupId + "'," + database.escape(name) + "," + database.escape(desc) + ", NOW() + INTERVAL " + duration + " MINUTE, NOW());", function(err, rows, fields) {
                      dbQueryCheck(err);
                      
                      //Create option 1
-                     database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option1 + "');", function(err, rows, fields) {
+                     database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote)," + database.escape(option1) + ");", function(err, rows, fields) {
                         dbQueryCheck(err);
                         
                         //Create option 2
-                        database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option2 + "');", function(err, rows, fields) {
+                        database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote)," + database.escape(option2) + ");", function(err, rows, fields) {
                            dbQueryCheck(err);
                            
                            if(option3 === null) {
@@ -1274,7 +1272,7 @@ app.get("/api/group/createVote", function(req, res) {
                            }
                            
                            //Create option 3
-                           database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option3 + "');", function(err, rows, fields) {
+                           database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote)," + database.escape(option3) + ");", function(err, rows, fields) {
                               dbQueryCheck(err);
                               
                               if(option4 === null) {
@@ -1292,7 +1290,7 @@ app.get("/api/group/createVote", function(req, res) {
                               }
                               
                               //Create option 4
-                              database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote),'" + option4 + "');", function(err, rows, fields) {
+                              database.query("INSERT INTO vote_option (vote_id, name) VALUES ((SELECT MAX(vote_id) FROM vote)," + database.escape(option4) + ");", function(err, rows, fields) {
                                  dbQueryCheck(err);
 
                                  database.commit(function(err) {
