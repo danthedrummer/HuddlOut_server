@@ -723,7 +723,7 @@ app.get("/api/group/getGroups", function(req, res) {
                }
                
                //Iterate through groups
-               database.query("SELECT * FROM groups;", function(err, rows, fields) {
+               database.query("SELECT * FROM groups inner join group_memberships on groups.group_id=group_memberships.group_id where profile_id = (SELECT profile_id FROM users WHERE id='" + sub + "');", function(err, rows, fields) {
                   dbQueryCheck(err);
                   
                   for(var i = 0; i < rows.length; i++) {
@@ -731,6 +731,7 @@ app.get("/api/group/getGroups", function(req, res) {
                         if(rows[i].group_id == groups[j].group_id) {
                            groups[j].group_name = rows[i].group_name;
                            groups[j].activity = rows[i].activity_type;
+                           groups[j].group_role = rows[i].group_role;
                         }
                      }
                   }
