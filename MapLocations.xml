@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <groupActivity type="Drinking">
+
+        <location type="Bar" id="1">
+            <name>The Workman's Club</name>
+            <address>10 Wellington Quay, Dublin 2, D02 VX36, Ireland</address>
+            <coordinates>
+                <latitude>53.34535076628776</latitude>
+                <longitude>-6.266412734985352</longitude>
+            </coordinates>
+        </location>
+        <location type="Bar" id="2">
+            <name>The Living Room</name>
+            <address>Findlater Pl, North Inner City, Dublin, Ireland</address>
+            <coordinates>
+                <latitude>53.352351</latitude>
+                <longitude>-6.260383</longitude>
+            </coordinates>
+        </location>
+        <location type="Bar" id="3">
+            <name>Woolshed Baa &amp; Grill</name>
+            <address>The Parnell Centre, Parnell St, Rotunda, Dublin 1, Ireland</address>
+            <coordinates>
+                <latitude>53.350359</latitude>
+                <longitude>-6.267389</longitude>
+            </coordinates>
+        </location>
+        <location type="Bar" id="4">
+            <name>The Mezz</name>
+            <address>Filmbase, Curved St, Dublin 2, Ireland</address>
+            <coordinates>
+                <latitude>53.344758</latitude>
+                <longitude>-6.264771</longitude>
+            </coordinates>
+        </location>
+        <location type="Bar" id="5">
+            <name>Vintage Cocktail Club</name>
+            <address>15-16 Crown Alley, Dublin 2, D02 E229, Ireland</address>
+            <coordinates>
+                <latitude>53.345063</latitude>
+                <longitude>-6.262963</longitude>
+            </coordinates>
+        </location>
+        <location type="Bar" id="6">
+            <name>Gypsy Rose Rock &amp; Blues Bar</name>
+            <address>6 Aston Quay, Dublin 2, D02 RX23, Ireland</address>
+            <coordinates>
+                <latitude>53.346337</latitude>
+                <longitude>-6.261327</longitude>
+            </coordinates>
+        </location>
+        <location type="Bar" id="7">
+            <name>Fibber Magee's</name>
+            <address>82 Parnell St, Rotunda, Dublin 1, D01 Y981, Ireland</address>
+            <coordinates>
+                <latitude>53.35290320705675</latitude>
+                <longitude>-6.260412633419037</longitude>
+            </coordinates>
+        </location>
+        <location type="Fast Food" id="1">
+            <name>Burger King</name>
+            <address>9-11 O'Connell Street Upper, North City, Dublin 1, D01 XY61, Ireland</address>
+            <coordinates>
+                <latitude>53.35052089829563</latitude>
+                <longitude>-6.260133683681488</longitude>
+            </coordinates>
+        </location>
+        <location type="Fast Food" id="2">
+            <name>McDonald's</name>
+            <address>52 O'Connell Street Lower, North City, Dublin 1, D01 C2P1, Ireland</address>
+            <coordinates>
+                <latitude>53.34783263599315</latitude>
+                <longitude>-6.259813159704208</longitude>
+            </coordinates>
+        </location>
+        <location type="Fast Food" id="3">
+            <name>Charlies 3</name>
+            <address>29 Westmoreland St, Dublin 2, D02 NH61, Ireland</address>
+            <coordinates>
+                <latitude>53.34624105358663</latitude>
+                <longitude>-6.258862316608429</longitude>
+            </coordinates>
+        </location>
+
+    </groupActivity>
+    <groupActivity type="Social Meet">
+
+        <location type="Restaurant" id="1">
+            <name>The Winding Stair</name>
+            <address>40 Ormond Quay Lower, North City, Dublin 1, D01 R9Y5, Ireland</address>
+            <coordinates>
+                <latitude>53.346648</latitude>
+                <longitude>-6.263634</longitude>
+            </coordinates>
+        </location>
+        <location type="Restaurant" id="2">
+            <name>Yamamori Sushi</name>
+            <address>Ormond Quay Lower, North City, Dublin 1, Ireland</address>
+            <coordinates>
+                <latitude>53.346587</latitude>
+                <longitude>-6.263824</longitude>
+            </coordinates>
+        </location>
+        <location type="Restaurant" id="3">
+            <name>The Mongolian Barbeque</name>
+            <address>Apartment 1, Anglesea St, Dublin 2, Ireland</address>
+            <coordinates>
+                <latitude>53.344979</latitude>
+                <longitude>-6.26195</longitude>
+            </coordinates>
+        </location>
+        <location type="Restaurant" id="4">
+            <name>DiFontaine's Pizzeria</name>
+            <address>22 Parliament St, Dublin 2, D02 NF24, Ireland</address>
+            <coordinates>
+                <latitude>53.345184</latitude>
+                <longitude>-6.267791</longitude>
+            </coordinates>
+        </location>
+        <location type="Restaurant" id="5">
+            <name>Boojum</name>
+            <address>Millennium Walkway, North City, Dublin, Ireland</address>
+            <coordinates>
+                <latitude>53.347375</latitude>
+                <longitude>-6.265482</longitude>
+            </coordinates>
+        </location>
+        <location type="Cafe" id="1">
+            <name>Lemon Jelly Cafe</name>
+            <address>Millennium Walkway, North City, Dublin, Ireland</address>
+            <coordinates>
+                <latitude>53.347195369687036</latitude>
+                <longitude>-6.265404224395752</longitude>
+            </coordinates>
+        </location>
+        <location type="Cafe" id="2">
+            <name>Caffe Cagliostro</name>
+            <address>Apartment 26, Quartier Bloom, Ormond Quay Lower, Bloom Ln, North City, Dublin 1, Ireland</address>
+            <coordinates>
+                <latitude>53.346723017911245</latitude>
+                <longitude>-6.265076994895935</longitude>
+            </coordinates>
+        </location>
+        <location type="Cafe" id="3">
+            <name>The Stage Door Cafe</name>
+            <address>Apartment 3, Essex St E, Dublin 2, Ireland</address>
+            <coordinates>
+                <latitude>53.345233874668224</latitude>
+                <longitude>-6.265908479690552</longitude>
+            </coordinates>
+        </location>
+        <location type="Cafe" id="4">
+            <name>The Granary Cafe</name>
+            <address>Unit 2, Temple Ln S, Dublin 2, Ireland</address>
+            <coordinates>
+                <latitude>53.34494884992382</latitude>
+                <longitude>-6.264148950576782</longitude>
+            </coordinates>
+        </location>
+        <location type="Cafe" id="5">
+            <name>Café Vivaldi</name>
+            <address>Unit 5, Temple Bar Square, Temple Bar, Dublin 2, Ireland</address>
+            <coordinates>
+                <latitude>53.34540841135198</latitude>
+                <longitude>-6.262979507446289</longitude>
+            </coordinates>
+        </location>
+
+    </groupActivity>
+</resources>
+
+<!--
+    <location type="" id="">
+        <name></name>
+        <address></address>
+        <coordinates>
+            <latitude></latitude>
+            <longitude></longitude>
+        </coordinates>
+    </location>
+-->

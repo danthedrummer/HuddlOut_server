@@ -630,7 +630,7 @@ app.get("/api/group/getMembers", function(req, res) {
    //Params: ?token, ?groupId
    //Returns "invalid params" if invalid params
    //Returns "not member" if user is not member of the group
-   //Returns list of ids of group member profiles if successful
+   //Returns JSON of group members consisting of profile_id, first_name, last_name and group_role
 
    var token = req.query.token;
    var groupId = req.query.groupId;
@@ -660,17 +660,34 @@ app.get("/api/group/getMembers", function(req, res) {
                }
 
                //Get profile ids of members of the group
-               database.query("SELECT profile_id FROM group_memberships WHERE group_id='" + groupId + "';", function(err, rows, fields) {
+               database.query("SELECT * FROM group_memberships WHERE group_id='" + groupId + "';", function(err, rows, fields) {
                   dbQueryCheck(err);
 
-                  var userIds = [];
-
+                  var groupMemberships = [];
+                  
                   for (var i = 0; i < rows.length; i++) {
-                     userIds.push(rows[i].profile_id);
+                     var groupMembership = {};
+                     groupMembership.profile_id = rows[i].profile_id;
+                     groupMembership.group_role = rows[i].group_role;
+                     groupMemberships.push(groupMembership);
                   }
-
-                  res.end(JSON.stringify(userIds));
-                  return;
+                  
+                  //Get first and last names of profile ids
+                  database.query("SELECT * FROM user_profiles;", function(err, rows, fields) {
+                     dbQueryCheck(err);
+                     
+                     for (var i = 0; i < rows.length; i++) {
+                        for(var j = 0; j < groupMemberships.length; j++) {
+                           if(groupMemberships[j].profile_id == rows[i].profile_id) {
+                              groupMemberships[j].first_name = rows[i].first_name;
+                              groupMemberships[j].last_name = rows[i].last_name;
+                           }
+                        }
+                     }
+                     
+                     res.end(JSON.stringify(groupMemberships));
+                     return;
+                  });
                });
             });
          });
@@ -753,7 +770,7 @@ app.get("/api/group/getGroups", function(req, res) {
 
 //User attempts to invite a member to the group
 app.get("/api/group/inviteMember", function(req, res) {
-   //Params: ?token, ?groupId, ?profileId
+   //Params: ?token, ?groupId, ?username
    //Returns "invalid params" if invalid params
    //Returns "membership not found" if the membership is not found
    //Returns "invalid role" if user is not an admin or moderator
@@ -764,17 +781,17 @@ app.get("/api/group/inviteMember", function(req, res) {
 
    var token = req.query.token;
    var groupId = req.query.groupId;
-   var profileId = req.query.profileId;
+   var username = req.query.username;
 
    //Check if params are valid
-   if (token === undefined || groupId === undefined || profileId === undefined) {
+   if (token === undefined || groupId === undefined || username === undefined) {
       res.end("invalid params");
       return;
    }
 
    //Sanitize params
    groupId = sanitizer.sanitize(groupId);
-   profileId = sanitizer.sanitize(profileId);
+   username = sanitizer.sanitize(username);
 
    isAuthValid(token, function(isValid) {
       if (isValid) {
@@ -801,13 +818,16 @@ app.get("/api/group/inviteMember", function(req, res) {
                   }
 
                   //Check if invited user exists
-                  database.query("SELECT * FROM user_profiles WHERE profile_id='" + profileId + "';", function(err, rows, fields) {
+                  database.query("SELECT * FROM user_profiles WHERE profile_id=(SELECT profile_id FROM users WHERE username='" + username + "');", function(err, rows, fields) {
                      dbQueryCheck(err);
-
+                     
                      if (rows.length == 0) {
-                        res.end("user not found")
+                        res.end("user not found");
+                        return;
                      }
-
+                     
+                     var profileId = rows[0].profile_id;
+                     
                      //Check if user is already a member
                      database.query("SELECT * FROM group_memberships WHERE profile_id='" + profileId + "' AND group_id='" + groupId + "';", function(err, rows, fields) {
                         dbQueryCheck(err);
@@ -1738,11 +1758,14 @@ app.get("/api/user/getProfile", function(req, res) {
                         privateProfile.first_name = profile.first_name;
                         privateProfile.last_name = profile.last_name;
                         privateProfile.privacy = profile.privacy;
+                        privateProfile.relationship_type = "Friend";
 
                         res.end(JSON.stringify(privateProfile));
                         return;
                      }
 
+                     profile.relationship_type = "Not Friend";
+                     
                      //Returns the public profile
                      res.end(JSON.stringify(profile));
                      return;
@@ -1750,7 +1773,6 @@ app.get("/api/user/getProfile", function(req, res) {
                });
             });
          });
-
       }
       else {
          checkAuth(token, function(response) {
